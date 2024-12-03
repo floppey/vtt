@@ -1,5 +1,6 @@
 {
   "name": "vtt",
+  "homepage": "https://floppey.github.io/vtt",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
