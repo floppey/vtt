@@ -194,8 +194,8 @@ export class VTT {
   private adjustZoom(direction: "in" | "out") {
     const step = 0.25;
     this.#zoom = Math.min(
-      Math.max(0.5, this.#zoom + step * (direction === "in" ? 1 : -1)),
-      4
+      Math.max(0.25, this.#zoom + step * (direction === "in" ? 1 : -1)),
+      3
     );
     this.#shouldRender = true;
   }

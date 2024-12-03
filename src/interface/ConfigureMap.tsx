@@ -11,6 +11,13 @@ export const ConfigureMap: React.FC = () => {
     }));
   };
 
+  const handleGridOffsetChange = (
+    field: "xOffset" | "yOffset",
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    handleChange(field, Number(e.target.value) % mapSettings.gridSize);
+  };
+
   return (
     <div>
       <h2>Map Settings</h2>
@@ -40,7 +47,7 @@ export const ConfigureMap: React.FC = () => {
           <input
             type="number"
             value={mapSettings.xOffset}
-            onChange={(e) => handleChange("xOffset", Number(e.target.value))}
+            onChange={(e) => handleGridOffsetChange("xOffset", e)}
           />
         </label>
       </div>
@@ -50,7 +57,7 @@ export const ConfigureMap: React.FC = () => {
           <input
             type="number"
             value={mapSettings.yOffset}
-            onChange={(e) => handleChange("yOffset", Number(e.target.value))}
+            onChange={(e) => handleGridOffsetChange("yOffset", e)}
           />
         </label>
       </div>
