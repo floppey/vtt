@@ -2,44 +2,43 @@ import { VTT } from "./VTT";
 
 export class Cell {
   #vtt: VTT;
-  #x: number;
-  #y: number;
+  #row: number;
+  #col: number;
 
-  constructor(vtt: VTT, x: number, y: number) {
+  constructor(vtt: VTT, row: number, col: number) {
     this.#vtt = vtt;
-    this.#x = x;
-    this.#y = y;
+    this.#row = row;
+    this.#col = col;
+  }
+
+  get row(): number {
+    return this.#row;
+  }
+
+  get col(): number {
+    return this.#col;
   }
 
   get x(): number {
-    return this.#x;
+    const { row } = this;
+    const { gridSize, zoom, position, gridXOffset } = this.#vtt;
+    const gridSizeZoomed = gridSize * zoom;
+    const xOffset = (gridXOffset - position.x) * zoom;
+    return row * gridSizeZoomed - xOffset;
   }
 
   get y(): number {
-    return this.#y;
+    const { col } = this;
+    const { gridSize, zoom, position, gridYOffset } = this.#vtt;
+    const gridSizeZoomed = gridSize * zoom;
+    const yOffset = (gridYOffset - position.y) * zoom;
+    return col * gridSizeZoomed - yOffset;
   }
 
   draw(): void {
-    const {
-      ctx,
-      gridSize,
-      zoom,
-      position,
-      gridXOffset,
-      gridYOffset,
-      gridColor,
-    } = this.#vtt;
-    const { x, y } = this;
-
+    const { ctx, gridSize, zoom, gridColor } = this.#vtt;
     const gridSizeZoomed = gridSize * zoom;
-
-    const xOffset = (gridXOffset - position.x) * zoom;
-    const yOffset = (gridYOffset - position.y) * zoom;
-
-    const cellX = x * gridSizeZoomed - xOffset;
-    const cellY = y * gridSizeZoomed - yOffset;
-
     ctx.strokeStyle = gridColor;
-    ctx.strokeRect(cellX, cellY, gridSizeZoomed, gridSizeZoomed);
+    ctx.strokeRect(this.x, this.y, gridSizeZoomed, gridSizeZoomed);
   }
 }
