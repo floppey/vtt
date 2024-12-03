@@ -10,6 +10,7 @@ export class VTT {
   #zoom: number;
   #windowSize: Size;
   #animationFrameId: number;
+  #loading: boolean;
   #shouldRender: boolean;
   #backgroundImage: HTMLImageElement | null;
   #backgroundImageSize: Size;
@@ -17,11 +18,18 @@ export class VTT {
   #tempPosition: Coordinates | null;
   #mousePosition: Coordinates;
   #mouseDragStart: Coordinates | null;
+  #gridColor: string;
+  #gridXOffset: number;
+  #gridYOffset: number;
 
   constructor(canvasId: string, backgroundImageUrl: string) {
     this.#canvas = document.getElementById(canvasId) as HTMLCanvasElement;
     this.#ctx = this.#canvas.getContext("2d") as CanvasRenderingContext2D;
     this.#gridSize = 50;
+    this.#gridColor = "#989898";
+    this.#gridXOffset = 0;
+    this.#gridYOffset = 0;
+
     this.#zoom = 1;
     this.#windowSize = { width: window.innerWidth, height: window.innerHeight };
     this.#animationFrameId = 0;
@@ -30,6 +38,7 @@ export class VTT {
     this.#tempPosition = null;
     this.#mousePosition = { x: 0, y: 0 };
     this.#mouseDragStart = null;
+    this.#loading = true;
     this.#backgroundImage = new Image();
     this.#backgroundImage.src = backgroundImageUrl;
     this.#backgroundImageSize = { width: 0, height: 0 };
@@ -48,6 +57,51 @@ export class VTT {
     window.addEventListener("wheel", (e) => this.onScroll(e));
     window.addEventListener("mousedown", (e) => this.mouseDown(e));
     window.addEventListener("mouseup", () => this.mouseUp());
+    window.addEventListener("contextmenu", (e) => this.contextMenu(e));
+  }
+
+  set gridXOffset(offset: number) {
+    this.#gridXOffset = offset;
+    this.#shouldRender = true;
+  }
+
+  set gridYOffset(offset: number) {
+    this.#gridYOffset = offset;
+    this.#shouldRender = true;
+  }
+
+  set gridColor(color: string) {
+    this.#gridColor = color;
+    this.#shouldRender = true;
+  }
+
+  get gridXOffset() {
+    return this.#gridXOffset;
+  }
+
+  get gridYOffset() {
+    return this.#gridYOffset;
+  }
+
+  get gridColor() {
+    return this.#gridColor;
+  }
+
+  set backgroundImage(url: string) {
+    this.#backgroundImage = new Image();
+    this.#backgroundImage.src = url;
+    this.#backgroundImageSize = { width: 0, height: 0 };
+    this.#loading = true;
+    this.#backgroundImage.onload = () => {
+      this.#backgroundImageSize = {
+        width: this.#backgroundImage?.naturalWidth || 0,
+        height: this.#backgroundImage?.naturalHeight || 0,
+      };
+      this.#position = { x: 0, y: 0 };
+      this.#zoom = 1;
+      this.#shouldRender = true;
+      this.#loading = false;
+    };
   }
 
   mouseMove(event: MouseEvent) {
@@ -88,12 +142,19 @@ export class VTT {
     }
   }
 
+  contextMenu(event: MouseEvent) {
+    if (event.target !== this.#canvas) {
+      return;
+    }
+    event.preventDefault();
+  }
+
   mouseDown(event: MouseEvent) {
     if (event.target !== this.#canvas) {
       return;
     }
-    // if left mouse button is clicked
-    if (event.button === 0 && !this.#mouseDragStart) {
+    // if right mouse button is clicked
+    if (event.button === 2 && !this.#mouseDragStart) {
       this.#mouseDragStart = { ...this.#mousePosition };
     }
   }
@@ -204,6 +265,11 @@ export class VTT {
 
   get gridSize() {
     return this.#gridSize;
+  }
+
+  set gridSize(size: number) {
+    this.#gridSize = size;
+    this.#shouldRender = true;
   }
 
   get position() {

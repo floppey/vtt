@@ -1,15 +1,16 @@
 import { VTT } from "../classes/VTT";
 
 function renderGrid(vtt: VTT): void {
-  const { gridSize, position, ctx, zoom } = vtt;
+  const { gridSize, position, ctx, zoom, gridXOffset, gridYOffset, gridColor } =
+    vtt;
   const { width, height } = ctx.canvas;
 
   const gridSizeZoomed = gridSize * zoom;
 
-  const xOffset = (position.x * zoom) % gridSizeZoomed;
-  const yOffset = (position.y * zoom) % gridSizeZoomed;
+  const xOffset = ((gridXOffset + position.x) * zoom) % gridSizeZoomed;
+  const yOffset = ((gridYOffset + position.y) * zoom) % gridSizeZoomed;
 
-  ctx.strokeStyle = "#e0e0e0";
+  ctx.strokeStyle = gridColor;
   ctx.lineWidth = 1;
 
   for (let x = 0; x <= width; x += gridSizeZoomed) {
