@@ -30,8 +30,8 @@ function App() {
   useEffect(() => {
     if (game) {
       game.gridSize = mapSettings.gridSize;
-      game.gridXOffset = mapSettings.xOffset;
-      game.gridYOffset = mapSettings.yOffset;
+      game.gridXOffset = mapSettings.xOffset % mapSettings.gridSize;
+      game.gridYOffset = mapSettings.yOffset % mapSettings.gridSize;
       game.gridColor = mapSettings.gridColor;
     }
   }, [
