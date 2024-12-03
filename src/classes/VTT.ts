@@ -1,4 +1,4 @@
-import { renderGrid } from "../canvas/renderGrid";
+import { Grid } from "./Grid";
 
 type Size = { width: number; height: number };
 type Coordinates = { x: number; y: number };
@@ -21,6 +21,7 @@ export class VTT {
   #gridColor: string;
   #gridXOffset: number;
   #gridYOffset: number;
+  #grid: Grid;
 
   constructor(canvasId: string, backgroundImageUrl: string) {
     this.#canvas = document.getElementById(canvasId) as HTMLCanvasElement;
@@ -49,6 +50,8 @@ export class VTT {
       };
       this.#shouldRender = true;
     };
+
+    this.#grid = new Grid(this, 10, 10);
 
     this.init();
 
@@ -97,6 +100,13 @@ export class VTT {
         width: this.#backgroundImage?.naturalWidth || 0,
         height: this.#backgroundImage?.naturalHeight || 0,
       };
+      const numberOfColumns = Math.ceil(
+        this.#backgroundImageSize.width / this.#gridSize
+      );
+      const numberOfRows = Math.ceil(
+        this.#backgroundImageSize.height / this.#gridSize
+      );
+      this.#grid.populateGrid(numberOfColumns, numberOfRows);
       this.#position = { x: 0, y: 0 };
       this.#zoom = 1;
       this.#shouldRender = true;
@@ -210,6 +220,8 @@ export class VTT {
         this.#windowSize.width,
         this.#windowSize.height
       );
+      this.#ctx.fillStyle = "black";
+      this.#ctx.fillRect(0, 0, this.#windowSize.width, this.#windowSize.height);
       const position = this.#tempPosition || this.#position;
       const viewportSize: Size = {
         width: this.#windowSize.width,
@@ -238,17 +250,7 @@ export class VTT {
           this.#windowSize.height
         );
       }
-      renderGrid(this);
-      this.#ctx.textAlign = "center";
-      this.#ctx.font = "20px Arial";
-      this.#ctx.fillStyle = "black";
-      this.#ctx.fillText(
-        `${(this.#tempPosition || this.#position).x},${
-          (this.#tempPosition || this.#position).y
-        } | ${this.#zoom.toFixed(2)} | ${this.#gridSize}`,
-        this.#windowSize.width / 2,
-        20
-      );
+      this.#grid.draw();
     }
     const id = requestAnimationFrame(() => this.renderLoop());
     this.#animationFrameId = id;

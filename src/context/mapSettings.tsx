@@ -15,8 +15,7 @@ export interface MapSettingsContextProps {
 
 const defaultSettings: MapSettings = {
   backgroundImage: "",
-  // Default grid size for dnd battle maps
-  gridSize: 70,
+  gridSize: 150,
   xOffset: 0,
   yOffset: 0,
   gridColor: "#989898",
