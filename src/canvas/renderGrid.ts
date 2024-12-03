@@ -6,8 +6,8 @@ function renderGrid(vtt: VTT): void {
 
   const gridSizeZoomed = gridSize * zoom;
 
-  const xOffset = position.x % gridSizeZoomed;
-  const yOffset = position.y % gridSizeZoomed;
+  const xOffset = (position.x * zoom) % gridSizeZoomed;
+  const yOffset = (position.y * zoom) % gridSizeZoomed;
 
   ctx.strokeStyle = "#e0e0e0";
   ctx.lineWidth = 1;

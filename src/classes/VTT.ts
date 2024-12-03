@@ -26,7 +26,7 @@ export class VTT {
     this.#windowSize = { width: window.innerWidth, height: window.innerHeight };
     this.#animationFrameId = 0;
     this.#shouldRender = true;
-    this.#position = { x: 75, y: 125 };
+    this.#position = { x: 0, y: 0 };
     this.#tempPosition = null;
     this.#mousePosition = { x: 0, y: 0 };
     this.#mouseDragStart = null;
@@ -57,8 +57,11 @@ export class VTT {
       const mouseDragX = this.#mousePosition.x - this.#mouseDragStart.x;
       const mouseDragY = this.#mousePosition.y - this.#mouseDragStart.y;
 
-      const tempPositionX = this.#position.x + mouseDragX;
-      const tempPositionY = this.#position.y + mouseDragY;
+      const zoomedDragX = mouseDragX / this.#zoom;
+      const zoomedDragY = mouseDragY / this.#zoom;
+
+      const tempPositionX = this.#position.x + zoomedDragX;
+      const tempPositionY = this.#position.y + zoomedDragY;
 
       const maxPositionX = this.#backgroundImageSize.width / 4;
       const minPositionX =
@@ -118,9 +121,9 @@ export class VTT {
   }
 
   private adjustZoom(direction: "in" | "out") {
-    const step = 0.125;
+    const step = 0.25;
     this.#zoom = Math.min(
-      Math.max(0.125, this.#zoom + step * (direction === "in" ? 1 : -1)),
+      Math.max(0.5, this.#zoom + step * (direction === "in" ? 1 : -1)),
       4
     );
     this.#shouldRender = true;
@@ -148,24 +151,26 @@ export class VTT {
       );
       const position = this.#tempPosition || this.#position;
       const viewportSize: Size = {
-        width: this.#windowSize.width / this.#zoom,
-        height: this.#windowSize.height / this.#zoom,
+        width: this.#windowSize.width,
+        height: this.#windowSize.height,
       };
       if (this.#backgroundImage?.complete) {
-        const visibleWidth = Math.min(
-          this.#backgroundImageSize.width,
-          viewportSize.width
-        );
-        const visibleHeight = Math.min(
-          this.#backgroundImageSize.height,
-          viewportSize.height
-        );
+        const visibleWidth =
+          Math.min(this.#backgroundImageSize.width, viewportSize.width) /
+          this.#zoom;
+        const visibleHeight =
+          Math.min(this.#backgroundImageSize.height, viewportSize.height) /
+          this.#zoom;
+        const sx = -position.x;
+        const sy = -position.y;
+        const sw = visibleWidth;
+        const sh = visibleHeight;
         this.#ctx.drawImage(
           this.#backgroundImage,
-          -position.x * this.#zoom,
-          -position.y * this.#zoom,
-          visibleWidth,
-          visibleHeight,
+          sx,
+          sy,
+          sw,
+          sh,
           0,
           0,
           this.#windowSize.width,
