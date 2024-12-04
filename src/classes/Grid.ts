@@ -17,8 +17,6 @@ export class Grid {
   }
 
   populateGrid(columns: number, rows: number): void {
-    // TODO: Persist units
-    const gridBackup = [...this.#cells];
     this.#cells = [];
     for (let row = 0; row < rows; row++) {
       this.#cells[row] = [];
@@ -34,13 +32,5 @@ export class Grid {
         cell.draw();
       });
     });
-  }
-
-  moveUnit(unit: Unit, from: Cell, to: Cell): void {
-    from.removeUnit(unit);
-    to.addUnit(unit);
-    unit.tempPosition = null;
-    unit.cell = to;
-    this.#vtt.shouldRender = true;
   }
 }

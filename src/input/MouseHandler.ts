@@ -136,9 +136,14 @@ export class MouseHandler {
     if (event.button === 0) {
       this.#moveUnitStartCoordinates = { ...this.#vtt.mousePosition };
       const cell = this.getCellAtMousePosition();
-      if (cell?.units.length) {
-        const unit = cell.units[0];
+      const unit = this.#vtt.units.find(
+        (unit) => (unit.cell?.id ?? -1) === (cell?.id ?? -2)
+      );
+
+      if (unit) {
         this.#vtt.selectUnit(unit, event.ctrlKey || event.metaKey);
+      } else {
+        this.#vtt.deselectAllUnits();
       }
     }
   }
@@ -166,9 +171,8 @@ export class MouseHandler {
 
       if (fromCell.id === toCell.id) {
         unit.tempPosition = null;
-        unit.click();
       } else {
-        this.#vtt.grid.moveUnit(unit, fromCell, toCell);
+        this.#vtt.moveUnit(unit, fromCell, toCell);
       }
       this.#moveUnitStartCoordinates = null;
     }

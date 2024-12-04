@@ -1,26 +1,29 @@
-import { Coordinates } from "../types/types";
+import { Coordinates, GridPosition } from "../types/types";
 import { Cell } from "./Cell";
+import { VTT } from "./VTT";
 
 export interface InitUnitProps {
-  cell: Cell;
+  vtt: VTT;
   name: string;
   maxHealth: number;
   type: string;
+  gridPosition: GridPosition | null;
 }
 
 export default class Unit {
   #id: number;
-  #cell: Cell;
+  #vtt: VTT;
+  #gridPosition: GridPosition | null;
   #name: string;
   #maxHealth: number;
   #currentHealth: number;
   #type: string;
-  #isSelected: boolean = false;
   #tempPosition: Coordinates | null = null;
 
-  constructor({ cell, name, maxHealth, type }: InitUnitProps) {
+  constructor({ vtt, name, maxHealth, type, gridPosition }: InitUnitProps) {
     this.#id = Math.floor(Math.random() * 10000000);
-    this.#cell = cell;
+    this.#vtt = vtt;
+    this.#gridPosition = gridPosition ?? null;
     this.#name = name;
     this.#maxHealth = maxHealth;
     this.#currentHealth = maxHealth * 0.8;
@@ -31,25 +34,29 @@ export default class Unit {
     return this.#id;
   }
 
-  get cell(): Cell {
-    return this.#cell;
+  get cell(): Cell | null {
+    if (!this.#gridPosition) {
+      return null;
+    }
+    return this.#vtt.grid.cells[this.#gridPosition?.row][
+      this.#gridPosition?.col
+    ];
   }
 
-  set cell(cell: Cell) {
-    this.#cell = cell;
+  set cell(cell: Cell | null) {
+    if (!cell) {
+      this.#gridPosition = null;
+      return;
+    }
+    this.#gridPosition = { row: cell.row, col: cell.col };
   }
 
   get width(): number {
-    return this.#cell.vtt.gridSize.width;
+    return this.#vtt.gridSize.width ?? 0;
   }
 
   get height(): number {
-    return this.#cell.vtt.gridSize.height;
-  }
-
-  set isSelected(isSelected: boolean) {
-    this.#isSelected = isSelected;
-    this.#cell.vtt.shouldRender = true;
+    return this.#vtt.gridSize.height ?? 0;
   }
 
   set tempPosition(tempPosition: Coordinates | null) {
@@ -61,12 +68,11 @@ export default class Unit {
   }
 
   click(): void {
-    this.#isSelected = !this.#isSelected;
-    this.#cell.vtt.shouldRender = true;
+    this.#vtt.shouldRender = true;
   }
 
   draw() {
-    const { ctx } = this.#cell.vtt;
+    const { ctx } = this.#vtt;
 
     this.drawUnit(ctx);
 
@@ -78,11 +84,19 @@ export default class Unit {
     }
   }
 
+  get isSelected(): boolean {
+    return this.#vtt.selectedUnits.includes(this);
+  }
+
   private drawUnit(
     ctx: CanvasRenderingContext2D,
-    position: Coordinates = this.#cell
+    position?: Coordinates | null
   ) {
-    const { gridSize, zoom } = this.#cell.vtt;
+    position = position ?? this.cell;
+    if (!position) {
+      return;
+    }
+    const { gridSize, zoom } = this.#vtt;
     const width = gridSize.width * zoom;
     const height = gridSize.height * zoom;
     const { x, y } = position;
@@ -94,7 +108,7 @@ export default class Unit {
     ctx.textAlign = "center";
     ctx.fillText(this.#name, x + width / 2, y + height / 2, width);
 
-    if (this.#isSelected) {
+    if (this.isSelected) {
       ctx.save();
       ctx.strokeStyle = "yellow";
       ctx.lineWidth = 3;

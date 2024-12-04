@@ -1,5 +1,6 @@
 import { MouseHandler } from "../input/MouseHandler";
 import { Coordinates, Size } from "../types/types";
+import { Cell } from "./Cell";
 import { Grid } from "./Grid";
 import Unit from "./Unit";
 
@@ -24,6 +25,7 @@ export class VTT {
   #gridXOffset: number;
   #gridYOffset: number;
   #grid: Grid;
+  #units: Unit[];
   #selectedUnits: Unit[] = [];
 
   constructor(canvasId: string, backgroundImageUrl: string) {
@@ -49,7 +51,7 @@ export class VTT {
     this.#backgroundImageSizeNatural = { width: 0, height: 0 };
     this.#backgroundImage.onload = () => this.onImageLoad();
     this.#mouseHandler = new MouseHandler(this);
-
+    this.#units = [];
     this.#grid = new Grid(this, 10, 10);
 
     this.init();
@@ -109,6 +111,10 @@ export class VTT {
 
   get position() {
     return this.#position;
+  }
+
+  get units() {
+    return this.#units;
   }
 
   /** Get the position that should be used for rendering */
@@ -207,7 +213,7 @@ export class VTT {
 
   selectUnit(unit: Unit, append: boolean) {
     if (!append) {
-      this.#selectedUnits = [];
+      this.deselectAllUnits();
     }
     this.#selectedUnits.push(unit);
     this.#shouldRender = true;
@@ -215,6 +221,12 @@ export class VTT {
 
   deselectUnit(unit: Unit) {
     this.#selectedUnits = this.#selectedUnits.filter((u) => u.id !== unit.id);
+    this.#shouldRender = true;
+  }
+
+  deselectAllUnits() {
+    if (this.#selectedUnits.length === 0) return;
+    this.#selectedUnits = [];
     this.#shouldRender = true;
   }
 
@@ -340,6 +352,7 @@ export class VTT {
         );
       }
       this.#grid.draw();
+      this.#units.forEach((unit) => unit.draw());
     }
     const id = requestAnimationFrame(() => this.renderLoop());
     this.#animationFrameId = id;
@@ -354,6 +367,24 @@ export class VTT {
       return;
     }
     this.setCanvasSize();
+    this.#units = [
+      new Unit({
+        vtt: this,
+        maxHealth: 100,
+        name: "Sir Lancelot",
+        type: "unit",
+        gridPosition: {
+          row: Math.floor(Math.random() * this.grid.cells.length),
+          col: Math.floor(Math.random() * this.grid.cells[0].length),
+        },
+      }),
+    ];
     this.renderLoop();
+  }
+
+  moveUnit(unit: Unit, from: Cell, to: Cell): void {
+    unit.tempPosition = null;
+    unit.cell = to;
+    this.shouldRender = true;
   }
 }

@@ -1,4 +1,3 @@
-import Unit, { InitUnitProps } from "./Unit";
 import { VTT } from "./VTT";
 
 export class Cell {
@@ -6,7 +5,6 @@ export class Cell {
   #vtt: VTT;
   #row: number;
   #col: number;
-  #units: Unit[] = [];
   #isSelected: boolean = false;
 
   constructor(vtt: VTT, row: number, col: number) {
@@ -30,10 +28,6 @@ export class Cell {
 
   get col(): number {
     return this.#col;
-  }
-
-  get units(): Unit[] {
-    return this.#units;
   }
 
   get x(): number {
@@ -70,19 +64,5 @@ export class Cell {
       ctx.fillStyle = "rgba(0, 0, 255, 0.5)";
       ctx.fillRect(this.x, this.y, width, height);
     }
-
-    this.#units.forEach((unit) => unit.draw());
-  }
-
-  createUnit(unit: Omit<InitUnitProps, "cell">): void {
-    this.#units.push(new Unit({ ...unit, cell: this }));
-  }
-
-  removeUnit(unit: Unit): void {
-    this.#units = this.#units.filter((u) => u.id !== unit.id);
-  }
-
-  addUnit(unit: Unit): void {
-    this.#units.push(unit);
   }
 }
