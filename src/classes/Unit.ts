@@ -65,8 +65,6 @@ export default class Unit {
     this.#cell.vtt.shouldRender = true;
   }
 
-
-
   draw() {
     const { ctx } = this.#cell.vtt;
 
@@ -80,7 +78,10 @@ export default class Unit {
     }
   }
 
-  private drawUnit(ctx: CanvasRenderingContext2D, position: Coordinates = this.#cell) {
+  private drawUnit(
+    ctx: CanvasRenderingContext2D,
+    position: Coordinates = this.#cell
+  ) {
     const { gridSize, zoom } = this.#cell.vtt;
     const width = gridSize.width * zoom;
     const height = gridSize.height * zoom;
@@ -105,6 +106,11 @@ export default class Unit {
     ctx.fillStyle = "black";
     ctx.fillRect(x, y - height / 5, width, height / 10);
     ctx.fillStyle = "red";
-    ctx.fillRect(x, y - height / 5, (this.#currentHealth / this.#maxHealth) * width, height / 10);
+    ctx.fillRect(
+      x,
+      y - height / 5,
+      (this.#currentHealth / this.#maxHealth) * width,
+      height / 10
+    );
   }
 }

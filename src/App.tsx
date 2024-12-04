@@ -9,15 +9,11 @@ function App() {
   const { mapSettings } = useMapSettings();
   const { vtt } = useVtt();
 
-
-
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-
-
     if (canvasRef.current) {
-      vtt.canvas = (canvasRef.current);
+      vtt.canvas = canvasRef.current;
       vtt.init();
     }
 
@@ -25,8 +21,7 @@ function App() {
       if (vtt) {
         vtt.destroy();
       }
-    }
-
+    };
   }, [vtt]);
 
   useEffect(() => {
@@ -41,12 +36,7 @@ function App() {
       vtt.gridYOffset = mapSettings.yOffset;
       vtt.gridColor = mapSettings.gridColor;
     }
-  }, [
-    vtt,
-    mapSettings.xOffset,
-    mapSettings.yOffset,
-    mapSettings.gridColor,
-  ]);
+  }, [vtt, mapSettings.xOffset, mapSettings.yOffset, mapSettings.gridColor]);
 
   useEffect(() => {
     if (vtt) {

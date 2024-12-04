@@ -55,12 +55,9 @@ export class VTT {
     this.init();
 
     window.addEventListener("resize", () => this.onResize());
-
-
   }
 
   destroy() {
-
     cancelAnimationFrame(this.#animationFrameId);
     this.#mouseHandler.destroy();
     window.removeEventListener("resize", () => this.onResize());
@@ -183,7 +180,6 @@ export class VTT {
   set gridSize(size: Size) {
     this.#gridSize = size;
     this.resizeGrid();
-
   }
 
   set position(position: Coordinates) {
@@ -236,8 +232,10 @@ export class VTT {
       height: this.#backgroundImage?.naturalHeight || 0,
     };
 
-    if (this.backgroundImageSize.width < this.windowSize.width ||
-      this.backgroundImageSize.height < this.windowSize.height) {
+    if (
+      this.backgroundImageSize.width < this.windowSize.width ||
+      this.backgroundImageSize.height < this.windowSize.height
+    ) {
       this.#backgroundImageSize.width = this.windowSize.width;
       this.#backgroundImageSize.height = this.windowSize.height;
     }
@@ -255,12 +253,6 @@ export class VTT {
   private onImageLoad() {
     this.resizeGrid();
 
-    this.#grid.cells[5][5].createUnit({
-      name: "John Doe",
-      maxHealth: 100,
-      type: "player",
-    });
-
     this.#position = { x: 0, y: 0 };
     this.#zoom = 1;
     this.#shouldRender = true;
@@ -272,8 +264,6 @@ export class VTT {
     this.#shouldRender = true;
   }
 
-
-
   private setCanvasSize() {
     this.#canvas.width = this.#windowSize.width;
     this.#canvas.height = this.#windowSize.height;
@@ -284,7 +274,7 @@ export class VTT {
     if (!this.canvas) {
       console.warn("Canvas not found");
       return;
-    };
+    }
     if (this.#shouldRender) {
       this.#shouldRender = false;
       this.#ctx.clearRect(
@@ -305,19 +295,22 @@ export class VTT {
           Math.min(this.#backgroundImageSizeNatural.width, viewportSize.width) /
           this.#zoom;
         const visibleHeight =
-          Math.min(this.#backgroundImageSizeNatural.height, viewportSize.height) /
-          this.#zoom;
+          Math.min(
+            this.#backgroundImageSizeNatural.height,
+            viewportSize.height
+          ) / this.#zoom;
 
-        const sxFactor = this.#backgroundImageSizeNatural.width / this.#backgroundImageSize.width;
-        const syFactor = this.#backgroundImageSizeNatural.height / this.#backgroundImageSize.height;
+        const sxFactor =
+          this.#backgroundImageSizeNatural.width /
+          this.#backgroundImageSize.width;
+        const syFactor =
+          this.#backgroundImageSizeNatural.height /
+          this.#backgroundImageSize.height;
 
         const sx = -position.x * sxFactor;
         const sy = -position.y * syFactor;
         const sw = visibleWidth;
         const sh = visibleHeight;
-
-
-
 
         const dx = 0;
         const dy = 0;
@@ -351,7 +344,6 @@ export class VTT {
     const id = requestAnimationFrame(() => this.renderLoop());
     this.#animationFrameId = id;
   }
-
 
   /**
    * Public methods

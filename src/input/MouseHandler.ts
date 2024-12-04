@@ -18,13 +18,14 @@ interface EventListeners {
 
 export class MouseHandler {
   #id: number;
+  #created: number;
   #vtt: VTT;
   #panMovementStartCoordinates: Coordinates | null;
   #moveUnitStartCoordinates: Coordinates | null;
   #eventListeners: Partial<EventListeners> = {};
 
   constructor(vtt: VTT) {
-
+    this.#created = Date.now();
     this.#id = Math.floor(Math.random() * 1000000);
     this.#vtt = vtt;
     this.#panMovementStartCoordinates = null;
@@ -46,8 +47,6 @@ export class MouseHandler {
     }
   }
 
-
-
   destroy() {
     Object.keys(this.#eventListeners).forEach((key) => {
       /* @ts-ignore */
@@ -55,16 +54,16 @@ export class MouseHandler {
     });
   }
 
-  private click(_event: MouseEvent) {
-
-  }
+  private click(_event: MouseEvent) {}
 
   mouseMove(event: MouseEvent) {
     this.#vtt.mousePosition = { x: event.clientX, y: event.clientY };
     if (this.#panMovementStartCoordinates) {
       // set temp position within image. Allow going 1/4 of the image size outside of the image
-      const mouseDragX = this.#vtt.mousePosition.x - this.#panMovementStartCoordinates.x;
-      const mouseDragY = this.#vtt.mousePosition.y - this.#panMovementStartCoordinates.y;
+      const mouseDragX =
+        this.#vtt.mousePosition.x - this.#panMovementStartCoordinates.x;
+      const mouseDragY =
+        this.#vtt.mousePosition.y - this.#panMovementStartCoordinates.y;
 
       const zoomedDragX = mouseDragX / this.#vtt.zoom;
       const zoomedDragY = mouseDragY / this.#vtt.zoom;
@@ -98,7 +97,14 @@ export class MouseHandler {
       const unit = this.#vtt.selectedUnits[0];
       if (unit) {
         const unitSize = Math.min(unit.width, unit.height) * this.#vtt.zoom;
-        if (unit.tempPosition || this.getDistanceBetweenCoordinates(this.#moveUnitStartCoordinates, this.#vtt.mousePosition) > unitSize / 2) {
+        if (
+          unit.tempPosition ||
+          this.getDistanceBetweenCoordinates(
+            this.#moveUnitStartCoordinates,
+            this.#vtt.mousePosition
+          ) >
+            unitSize / 2
+        ) {
           unit.tempPosition = {
             x: this.#vtt.mousePosition.x - (unit.width * this.#vtt.zoom) / 2,
             y: this.#vtt.mousePosition.y - (unit.height * this.#vtt.zoom) / 2,
@@ -138,8 +144,9 @@ export class MouseHandler {
     }
 
     if (this.#moveUnitStartCoordinates) {
-
-      const fromCell = this.getCellAtCoordinates(this.#moveUnitStartCoordinates);
+      const fromCell = this.getCellAtCoordinates(
+        this.#moveUnitStartCoordinates
+      );
       const toCell = this.getCellAtMousePosition();
       if (!fromCell || !toCell) {
         return;
@@ -188,15 +195,16 @@ export class MouseHandler {
     for (let x = 0; x < this.#vtt.grid.cells.length && !cell; x++) {
       const testCellX = this.#vtt.grid.cells[x][0];
 
-      if (coordinates.y < testCellX.y ||
-        coordinates.y > testCellX.y + cellHeight) {
+      if (
+        coordinates.y < testCellX.y ||
+        coordinates.y > testCellX.y + cellHeight
+      ) {
         continue;
       }
 
       for (let y = 0; y < this.#vtt.grid.cells[x].length && !cell; y++) {
         const testCellY = this.#vtt.grid.cells[x][y];
         if (
-
           coordinates.x > testCellY.x &&
           coordinates.x < testCellY.x + cellWidth
         ) {

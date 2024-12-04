@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState } from "react";
 
 import { VTT } from "../classes/VTT";
 
-
 type GlobalVTT = VTT;
 
 export interface VTTContextProps {
@@ -10,22 +9,14 @@ export interface VTTContextProps {
   setVtt: React.Dispatch<React.SetStateAction<GlobalVTT>>;
 }
 
-
-export const VttContext = createContext<
-  VTTContextProps | undefined
->(undefined);
+export const VttContext = createContext<VTTContextProps | undefined>(undefined);
 
 interface VttProviderProps {
   children: React.ReactNode;
 }
 
-export const VttProvider: React.FC<VttProviderProps> = ({
-  children,
-}) => {
-
-
+export const VttProvider: React.FC<VttProviderProps> = ({ children }) => {
   const [vtt, setVtt] = useState<GlobalVTT>(new VTT("canvas", ""));
-
 
   return (
     <VttContext.Provider value={{ vtt, setVtt }}>

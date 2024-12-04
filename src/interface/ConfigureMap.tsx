@@ -12,14 +12,14 @@ export const ConfigureMap: React.FC = () => {
         [field]: value,
       };
 
-      newSettings.xOffset = newSettings.xOffset % newSettings.gridSize.width;
-      newSettings.yOffset = newSettings.yOffset % newSettings.gridSize.height;
-
       return newSettings;
     });
-  }
+  };
 
-  const handleGridSizeChange = (field: "width" | "height", e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGridSizeChange = (
+    field: "width" | "height",
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const inputNumber = Number(e.target.value);
     setMapSettings((prevSettings) => {
       const newGridSize = {
@@ -37,10 +37,7 @@ export const ConfigureMap: React.FC = () => {
         gridSize: newGridSize,
       };
     });
-
   };
-
-
 
   return (
     <div>
@@ -83,9 +80,7 @@ export const ConfigureMap: React.FC = () => {
           />
           Sync Width and Height
         </label>
-
       </div>
-
 
       <div>
         <label>
@@ -118,7 +113,5 @@ export const ConfigureMap: React.FC = () => {
         </label>
       </div>
     </div>
-
   );
 };
-
