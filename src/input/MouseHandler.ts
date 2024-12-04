@@ -45,6 +45,14 @@ export class MouseHandler {
         this.#vtt.canvas.addEventListener(key, this.#eventListeners[key]);
       });
     }
+
+    if (!window.mousehandlers) {
+      window.mousehandlers = [];
+    }
+    window.mousehandlers.forEach((handler: MouseHandler) => {
+      handler.destroy();
+    });
+    window.mousehandlers = [this];
   }
 
   destroy() {
