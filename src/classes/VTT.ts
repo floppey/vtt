@@ -1,12 +1,11 @@
 import { MouseHandler } from "../input/MouseHandler";
 import { Coordinates, Size } from "../types/types";
 import { Grid } from "./Grid";
-import Unit from "./Unit";
 
 export class VTT {
   #canvas: HTMLCanvasElement;
   #ctx: CanvasRenderingContext2D;
-  #gridSize: number;
+  #gridSize: Size;
   #zoom: number;
   #windowSize: Size;
   #animationFrameId: number;
@@ -15,6 +14,7 @@ export class VTT {
   #shouldRender: boolean;
   #backgroundImage: HTMLImageElement | null;
   #backgroundImageSize: Size;
+  #backgroundImageSizeNatural: Size;
   #position: Coordinates;
   #tempPosition: Coordinates | null;
   #mousePosition: Coordinates;
@@ -26,7 +26,7 @@ export class VTT {
   constructor(canvasId: string, backgroundImageUrl: string) {
     this.#canvas = document.getElementById(canvasId) as HTMLCanvasElement;
     this.#ctx = this.#canvas.getContext("2d") as CanvasRenderingContext2D;
-    this.#gridSize = 50;
+    this.#gridSize = { width: 50, height: 50 };
     this.#gridColor = "#989898";
     this.#gridXOffset = 0;
     this.#gridYOffset = 0;
@@ -42,6 +42,7 @@ export class VTT {
     this.#backgroundImage = new Image();
     this.#backgroundImage.src = backgroundImageUrl;
     this.#backgroundImageSize = { width: 0, height: 0 };
+    this.#backgroundImageSizeNatural = { width: 0, height: 0 };
     this.#backgroundImage.onload = () => this.onImageLoad();
     this.#mouseHandler = new MouseHandler(this);
 
@@ -153,9 +154,10 @@ export class VTT {
     this.#backgroundImage.onload = () => this.onImageLoad();
   }
 
-  set gridSize(size: number) {
+  set gridSize(size: Size) {
     this.#gridSize = size;
-    this.#shouldRender = true;
+    this.resizeGrid();
+
   }
 
   set position(position: Coordinates) {
@@ -180,18 +182,34 @@ export class VTT {
    * Private methods
    */
 
-  private onImageLoad() {
+  private resizeGrid() {
+    this.#backgroundImageSizeNatural = {
+      width: this.#backgroundImage?.naturalWidth || 0,
+      height: this.#backgroundImage?.naturalHeight || 0,
+    };
     this.#backgroundImageSize = {
       width: this.#backgroundImage?.naturalWidth || 0,
       height: this.#backgroundImage?.naturalHeight || 0,
     };
+
+    if (this.backgroundImageSize.width < this.windowSize.width ||
+      this.backgroundImageSize.height < this.windowSize.height) {
+      this.#backgroundImageSize.width = this.windowSize.width;
+      this.#backgroundImageSize.height = this.windowSize.height;
+    }
+
     const numberOfColumns = Math.ceil(
-      this.#backgroundImageSize.width / this.#gridSize
+      this.#backgroundImageSize.width / this.#gridSize.width
     );
     const numberOfRows = Math.ceil(
-      this.#backgroundImageSize.height / this.#gridSize
+      this.#backgroundImageSize.height / this.#gridSize.height
     );
     this.#grid.populateGrid(numberOfColumns, numberOfRows);
+    this.#shouldRender = true;
+  }
+
+  private onImageLoad() {
+    this.resizeGrid();
 
     this.#grid.cells[5][5].createUnit({
       name: "Player 1",
@@ -239,25 +257,48 @@ export class VTT {
       };
       if (this.#backgroundImage?.complete) {
         const visibleWidth =
-          Math.min(this.#backgroundImageSize.width, viewportSize.width) /
+          Math.min(this.#backgroundImageSizeNatural.width, viewportSize.width) /
           this.#zoom;
         const visibleHeight =
-          Math.min(this.#backgroundImageSize.height, viewportSize.height) /
+          Math.min(this.#backgroundImageSizeNatural.height, viewportSize.height) /
           this.#zoom;
-        const sx = -position.x;
-        const sy = -position.y;
+
+        const sxFactor = this.#backgroundImageSizeNatural.width / this.#backgroundImageSize.width;
+        const syFactor = this.#backgroundImageSizeNatural.height / this.#backgroundImageSize.height;
+
+        const sx = -position.x * sxFactor;
+        const sy = -position.y * syFactor;
         const sw = visibleWidth;
         const sh = visibleHeight;
+
+
+
+
+        const dx = 0;
+        const dy = 0;
+        const dw = viewportSize.width;
+        const dh = viewportSize.height;
+
+        // const backgroundSize = {
+        //   width: this.#backgroundImageSize.width / this.#zoom,
+        //   height: this.#backgroundImageSize.height / this.#zoom,
+        // }
+
+        // const dx = backgroundSize.width < viewportSize.width ? (viewportSize.width - backgroundSize.width) / 2 : 0;
+        // const dy = backgroundSize.height < viewportSize.height ? (viewportSize.height - backgroundSize.height) / 2 : 0;
+        // const dw = backgroundSize.width < viewportSize.width ? backgroundSize.width : viewportSize.width
+        // const dh = backgroundSize.height < viewportSize.height ? backgroundSize.height : viewportSize.height
+
         this.#ctx.drawImage(
           this.#backgroundImage,
           sx,
           sy,
           sw,
           sh,
-          0,
-          0,
-          this.#windowSize.width,
-          this.#windowSize.height
+          dx,
+          dy,
+          dw,
+          dh
         );
       }
       this.#grid.draw();

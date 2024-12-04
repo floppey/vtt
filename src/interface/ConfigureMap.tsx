@@ -1,22 +1,46 @@
-import React from "react";
+import React, { useState } from "react";
 import { MapSettings, useMapSettings } from "../context/mapSettings";
 
 export const ConfigureMap: React.FC = () => {
   const { mapSettings, setMapSettings } = useMapSettings();
+  const [syncGridHeightAndWidth, setSyncGridHeightAndWidth] = useState(true);
 
   const handleChange = (field: keyof MapSettings, value: string | number) => {
-    setMapSettings((prevSettings) => ({
-      ...prevSettings,
-      [field]: value,
-    }));
+    setMapSettings((prevSettings) => {
+      const newSettings = {
+        ...prevSettings,
+        [field]: value,
+      };
+
+      newSettings.xOffset = newSettings.xOffset % newSettings.gridSize.width;
+      newSettings.yOffset = newSettings.yOffset % newSettings.gridSize.height;
+
+      return newSettings;
+    });
+  }
+
+  const handleGridSizeChange = (field: "width" | "height", e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputNumber = Number(e.target.value);
+    setMapSettings((prevSettings) => {
+      const newGridSize = {
+        ...prevSettings.gridSize,
+        [field]: inputNumber,
+      };
+
+      if (syncGridHeightAndWidth) {
+        newGridSize.width = inputNumber;
+        newGridSize.height = inputNumber;
+      }
+
+      return {
+        ...prevSettings,
+        gridSize: newGridSize,
+      };
+    });
+
   };
 
-  const handleGridOffsetChange = (
-    field: "xOffset" | "yOffset",
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    handleChange(field, Number(e.target.value) % mapSettings.gridSize);
-  };
+
 
   return (
     <div>
@@ -33,21 +57,43 @@ export const ConfigureMap: React.FC = () => {
       </div>
       <div>
         <label>
-          Grid Size (pixels):
+          Grid {syncGridHeightAndWidth ? "Size" : "Width"} (pixels):
           <input
             type="number"
-            value={mapSettings.gridSize}
-            onChange={(e) => handleChange("gridSize", Number(e.target.value))}
+            value={mapSettings.gridSize.width}
+            onChange={(e) => handleGridSizeChange("width", e)}
           />
         </label>
+        {syncGridHeightAndWidth ? null : (
+          <label>
+            Grid Height (pixels):
+            <input
+              type="number"
+              value={mapSettings.gridSize.height}
+              onChange={(e) => handleGridSizeChange("height", e)}
+              disabled={syncGridHeightAndWidth}
+            />
+          </label>
+        )}
+        <label>
+          <input
+            type="checkbox"
+            checked={syncGridHeightAndWidth}
+            onChange={(e) => setSyncGridHeightAndWidth(e.target.checked)}
+          />
+          Sync Width and Height
+        </label>
+
       </div>
+
+
       <div>
         <label>
           X Offset:
           <input
             type="number"
             value={mapSettings.xOffset}
-            onChange={(e) => handleGridOffsetChange("xOffset", e)}
+            onChange={(e) => handleChange("xOffset", Number(e.target.value))}
           />
         </label>
       </div>
@@ -57,7 +103,7 @@ export const ConfigureMap: React.FC = () => {
           <input
             type="number"
             value={mapSettings.yOffset}
-            onChange={(e) => handleGridOffsetChange("yOffset", e)}
+            onChange={(e) => handleChange("yOffset", Number(e.target.value))}
           />
         </label>
       </div>
@@ -72,5 +118,7 @@ export const ConfigureMap: React.FC = () => {
         </label>
       </div>
     </div>
+
   );
 };
+

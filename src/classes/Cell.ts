@@ -30,7 +30,7 @@ export class Cell {
     const { row } = this;
     const { gridSize, zoom, gridXOffset } = this.#vtt;
     const position = this.#vtt.getPosition();
-    const gridSizeZoomed = gridSize * zoom;
+    const gridSizeZoomed = gridSize.width * zoom;
     const xOffset = (gridXOffset - position.x) * zoom;
     return row * gridSizeZoomed - xOffset;
   }
@@ -39,7 +39,7 @@ export class Cell {
     const { col } = this;
     const { gridSize, zoom, gridYOffset } = this.#vtt;
     const position = this.#vtt.getPosition();
-    const gridSizeZoomed = gridSize * zoom;
+    const gridSizeZoomed = gridSize.height * zoom;
     const yOffset = (gridYOffset - position.y) * zoom;
     return col * gridSizeZoomed - yOffset;
   }
@@ -51,13 +51,14 @@ export class Cell {
 
   draw(): void {
     const { ctx, gridSize, zoom, gridColor } = this.#vtt;
-    const gridSizeZoomed = gridSize * zoom;
+    const width = gridSize.width * zoom;
+    const height = gridSize.height * zoom;
     ctx.strokeStyle = gridColor;
-    ctx.strokeRect(this.x, this.y, gridSizeZoomed, gridSizeZoomed);
+    ctx.strokeRect(this.x, this.y, width, height);
 
     if (this.#isSelected) {
       ctx.fillStyle = "rgba(0, 0, 255, 0.5)";
-      ctx.fillRect(this.x, this.y, gridSizeZoomed, gridSizeZoomed);
+      ctx.fillRect(this.x, this.y, width, height);
     }
 
     this.#units.forEach((unit) => unit.draw());

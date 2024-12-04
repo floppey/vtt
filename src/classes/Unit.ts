@@ -43,17 +43,18 @@ export default class Unit {
 
   draw() {
     const { ctx, gridSize, zoom } = this.#cell.vtt;
-    const gridSizeZoomed = gridSize * zoom;
+    const width = gridSize.width * zoom;
+    const height = gridSize.height * zoom;
     const { x, y } = this.#cell;
     ctx.fillStyle = "red";
 
-    ctx.fillRect(x, y, gridSizeZoomed, gridSizeZoomed);
+    ctx.fillRect(x, y, width, height);
 
     if (this.#isSelected) {
       ctx.save();
       ctx.strokeStyle = "yellow";
       ctx.lineWidth = 3;
-      ctx.strokeRect(x, y, gridSizeZoomed, gridSizeZoomed);
+      ctx.strokeRect(x, y, width, height);
       ctx.restore();
     }
   }

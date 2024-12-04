@@ -17,6 +17,8 @@ export class Grid {
   }
 
   populateGrid(width: number, height: number): void {
+    const gridBackup = [...this.#cells];
+    this.#cells = [];
     for (let y = 0; y < height; y++) {
       this.#cells[y] = [];
       for (let x = 0; x < width; x++) {

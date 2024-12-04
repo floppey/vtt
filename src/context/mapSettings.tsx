@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { Size } from "../types/types";
 
 export interface MapSettings {
   backgroundImage: string;
-  gridSize: number;
+  gridSize: Size;
   xOffset: number;
   yOffset: number;
   gridColor: string;
@@ -15,7 +16,7 @@ export interface MapSettingsContextProps {
 
 const defaultSettings: MapSettings = {
   backgroundImage: "",
-  gridSize: 150,
+  gridSize: { width: 150, height: 150 },
   xOffset: 0,
   yOffset: 0,
   gridColor: "#989898",
