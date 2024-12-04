@@ -1,4 +1,5 @@
 import { Cell } from "./Cell";
+import Unit from "./Unit";
 import { VTT } from "./VTT";
 
 export class Grid {
@@ -9,6 +10,10 @@ export class Grid {
     this.#vtt = vtt;
     this.#cells = [];
     this.populateGrid(rows, columns);
+  }
+
+  get cells(): Cell[][] {
+    return this.#cells;
   }
 
   populateGrid(width: number, height: number): void {
@@ -26,5 +31,11 @@ export class Grid {
         cell.draw();
       });
     });
+  }
+
+  moveUnit(unit: Unit, from: Cell, to: Cell): void {
+    from.removeUnit(unit);
+    to.addUnit(unit);
+    unit.cell = to;
   }
 }

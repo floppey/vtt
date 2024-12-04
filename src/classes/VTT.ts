@@ -1,7 +1,7 @@
+import { MouseHandler } from "../input/MouseHandler";
+import { Coordinates, Size } from "../types/types";
 import { Grid } from "./Grid";
-
-type Size = { width: number; height: number };
-type Coordinates = { x: number; y: number };
+import Unit from "./Unit";
 
 export class VTT {
   #canvas: HTMLCanvasElement;
@@ -11,13 +11,13 @@ export class VTT {
   #windowSize: Size;
   #animationFrameId: number;
   #loading: boolean;
+  #mouseHandler: MouseHandler;
   #shouldRender: boolean;
   #backgroundImage: HTMLImageElement | null;
   #backgroundImageSize: Size;
   #position: Coordinates;
   #tempPosition: Coordinates | null;
   #mousePosition: Coordinates;
-  #mouseDragStart: Coordinates | null;
   #gridColor: string;
   #gridXOffset: number;
   #gridYOffset: number;
@@ -38,29 +38,87 @@ export class VTT {
     this.#position = { x: 0, y: 0 };
     this.#tempPosition = null;
     this.#mousePosition = { x: 0, y: 0 };
-    this.#mouseDragStart = null;
     this.#loading = true;
     this.#backgroundImage = new Image();
     this.#backgroundImage.src = backgroundImageUrl;
     this.#backgroundImageSize = { width: 0, height: 0 };
-    this.#backgroundImage.onload = () => {
-      this.#backgroundImageSize = {
-        width: this.#backgroundImage?.naturalWidth || 0,
-        height: this.#backgroundImage?.naturalHeight || 0,
-      };
-      this.#shouldRender = true;
-    };
+    this.#backgroundImage.onload = () => this.onImageLoad();
+    this.#mouseHandler = new MouseHandler(this);
 
     this.#grid = new Grid(this, 10, 10);
 
     this.init();
 
     window.addEventListener("resize", () => this.onResize());
-    window.addEventListener("mousemove", (e) => this.mouseMove(e));
-    window.addEventListener("wheel", (e) => this.onScroll(e));
-    window.addEventListener("mousedown", (e) => this.mouseDown(e));
-    window.addEventListener("mouseup", () => this.mouseUp());
-    window.addEventListener("contextmenu", (e) => this.contextMenu(e));
+  }
+
+  /**
+   * Getters
+   */
+
+  get gridXOffset() {
+    return this.#gridXOffset;
+  }
+
+  get gridYOffset() {
+    return this.#gridYOffset;
+  }
+
+  get gridColor() {
+    return this.#gridColor;
+  }
+
+  get canvas() {
+    return this.#canvas;
+  }
+
+  get grid() {
+    return this.#grid;
+  }
+
+  get mousePosition() {
+    return this.#mousePosition;
+  }
+
+  get tempPosition() {
+    return this.#tempPosition;
+  }
+
+  get backgroundImageSize() {
+    return this.#backgroundImageSize;
+  }
+
+  get ctx() {
+    return this.#ctx;
+  }
+
+  get gridSize() {
+    return this.#gridSize;
+  }
+
+  get position() {
+    return this.#position;
+  }
+
+  /** Get the position that should be used for rendering */
+  getPosition() {
+    return this.tempPosition || this.#position;
+  }
+
+  get zoom() {
+    return this.#zoom;
+  }
+
+  get windowSize() {
+    return this.#windowSize;
+  }
+
+  /**
+   * Setters
+   */
+
+  set shouldRender(value: boolean) {
+    this.#shouldRender = value;
   }
 
   set gridXOffset(offset: number) {
@@ -78,16 +136,13 @@ export class VTT {
     this.#shouldRender = true;
   }
 
-  get gridXOffset() {
-    return this.#gridXOffset;
+  set windowSize(size: { width: number; height: number }) {
+    this.#windowSize = size;
+    this.setCanvasSize();
   }
 
-  get gridYOffset() {
-    return this.#gridYOffset;
-  }
-
-  get gridColor() {
-    return this.#gridColor;
+  set mousePosition(position: Coordinates) {
+    this.#mousePosition = position;
   }
 
   set backgroundImage(url: string) {
@@ -95,108 +150,63 @@ export class VTT {
     this.#backgroundImage.src = url;
     this.#backgroundImageSize = { width: 0, height: 0 };
     this.#loading = true;
-    this.#backgroundImage.onload = () => {
-      this.#backgroundImageSize = {
-        width: this.#backgroundImage?.naturalWidth || 0,
-        height: this.#backgroundImage?.naturalHeight || 0,
-      };
-      const numberOfColumns = Math.ceil(
-        this.#backgroundImageSize.width / this.#gridSize
-      );
-      const numberOfRows = Math.ceil(
-        this.#backgroundImageSize.height / this.#gridSize
-      );
-      this.#grid.populateGrid(numberOfColumns, numberOfRows);
-      this.#position = { x: 0, y: 0 };
-      this.#zoom = 1;
+    this.#backgroundImage.onload = () => this.onImageLoad();
+  }
+
+  set gridSize(size: number) {
+    this.#gridSize = size;
+    this.#shouldRender = true;
+  }
+
+  set position(position: Coordinates) {
+    this.#position = position;
+    this.#shouldRender = true;
+  }
+
+  set tempPosition(position: Coordinates | null) {
+    this.#tempPosition = position;
+    if (position !== null) {
       this.#shouldRender = true;
-      this.#loading = false;
+    }
+  }
+
+  set zoom(zoom: number) {
+    if (this.#zoom === zoom) return;
+    this.#zoom = zoom;
+    this.#shouldRender = true;
+  }
+
+  /**
+   * Private methods
+   */
+
+  private onImageLoad() {
+    this.#backgroundImageSize = {
+      width: this.#backgroundImage?.naturalWidth || 0,
+      height: this.#backgroundImage?.naturalHeight || 0,
     };
-  }
+    const numberOfColumns = Math.ceil(
+      this.#backgroundImageSize.width / this.#gridSize
+    );
+    const numberOfRows = Math.ceil(
+      this.#backgroundImageSize.height / this.#gridSize
+    );
+    this.#grid.populateGrid(numberOfColumns, numberOfRows);
 
-  mouseMove(event: MouseEvent) {
-    this.#mousePosition = { x: event.clientX, y: event.clientY };
-    if (this.#mouseDragStart) {
-      // set temp position within image. Allow going 1/4 of the image size outside of the image
-      const mouseDragX = this.#mousePosition.x - this.#mouseDragStart.x;
-      const mouseDragY = this.#mousePosition.y - this.#mouseDragStart.y;
+    this.#grid.cells[5][5].createUnit({
+      name: "Player 1",
+      maxHealth: 100,
+      type: "player",
+    });
 
-      const zoomedDragX = mouseDragX / this.#zoom;
-      const zoomedDragY = mouseDragY / this.#zoom;
-
-      const tempPositionX = this.#position.x + zoomedDragX;
-      const tempPositionY = this.#position.y + zoomedDragY;
-
-      const maxPositionX = this.#backgroundImageSize.width / 4;
-      const minPositionX =
-        -this.#backgroundImageSize.width + this.#windowSize.width / 2;
-
-      const maxPositionY = this.#windowSize.height / 4;
-      const minPositionY =
-        -this.#backgroundImageSize.height + this.#windowSize.height / 2;
-
-      const boundedX = Math.max(
-        minPositionX,
-        Math.min(maxPositionX, tempPositionX)
-      );
-      const boundedY = Math.max(
-        minPositionY,
-        Math.min(maxPositionY, tempPositionY)
-      );
-
-      this.#tempPosition = {
-        x: boundedX,
-        y: boundedY,
-      };
-      this.#shouldRender = true;
-    }
-  }
-
-  contextMenu(event: MouseEvent) {
-    if (event.target !== this.#canvas) {
-      return;
-    }
-    event.preventDefault();
-  }
-
-  mouseDown(event: MouseEvent) {
-    if (event.target !== this.#canvas) {
-      return;
-    }
-    // if right mouse button is clicked
-    if (event.button === 2 && !this.#mouseDragStart) {
-      this.#mouseDragStart = { ...this.#mousePosition };
-    }
-  }
-
-  mouseUp() {
-    this.#mouseDragStart = null;
-    if (this.#tempPosition) {
-      this.#position = { ...this.#tempPosition };
-      this.#tempPosition = null;
-      this.#shouldRender = true;
-    }
-  }
-
-  private onScroll(event: WheelEvent) {
-    if (event.target !== this.#canvas) {
-      return;
-    }
-    event.preventDefault();
-    this.adjustZoom(event.deltaY > 0 ? "out" : "in");
+    this.#position = { x: 0, y: 0 };
+    this.#zoom = 1;
+    this.#shouldRender = true;
+    this.#loading = false;
   }
 
   private onResize() {
     this.windowSize = { width: window.innerWidth, height: window.innerHeight };
-    this.#shouldRender = true;
-  }
-
-  private adjustZoom(direction: "in" | "out") {
-    const step = 0.25;
-    this.#zoom = Math.min(
-      Math.max(0.25, this.#zoom + step * (direction === "in" ? 1 : -1)),
-      3
-    );
     this.#shouldRender = true;
   }
 
@@ -254,31 +264,5 @@ export class VTT {
     }
     const id = requestAnimationFrame(() => this.renderLoop());
     this.#animationFrameId = id;
-  }
-
-  set windowSize(size: { width: number; height: number }) {
-    this.#windowSize = size;
-    this.setCanvasSize();
-  }
-
-  get ctx() {
-    return this.#ctx;
-  }
-
-  get gridSize() {
-    return this.#gridSize;
-  }
-
-  set gridSize(size: number) {
-    this.#gridSize = size;
-    this.#shouldRender = true;
-  }
-
-  get position() {
-    return this.#tempPosition || this.#position;
-  }
-
-  get zoom() {
-    return this.#zoom;
   }
 }
