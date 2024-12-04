@@ -1,8 +1,10 @@
 import { MouseHandler } from "../input/MouseHandler";
 import { Coordinates, Size } from "../types/types";
 import { Grid } from "./Grid";
+import Unit from "./Unit";
 
 export class VTT {
+  #id: number;
   #canvas: HTMLCanvasElement;
   #ctx: CanvasRenderingContext2D;
   #gridSize: Size;
@@ -22,10 +24,12 @@ export class VTT {
   #gridXOffset: number;
   #gridYOffset: number;
   #grid: Grid;
+  #selectedUnits: Unit[] = [];
 
   constructor(canvasId: string, backgroundImageUrl: string) {
+    this.#id = Math.floor(Math.random() * 1000000);
     this.#canvas = document.getElementById(canvasId) as HTMLCanvasElement;
-    this.#ctx = this.#canvas.getContext("2d") as CanvasRenderingContext2D;
+    this.#ctx = this.#canvas?.getContext("2d") as CanvasRenderingContext2D;
     this.#gridSize = { width: 50, height: 50 };
     this.#gridColor = "#989898";
     this.#gridXOffset = 0;
@@ -51,6 +55,15 @@ export class VTT {
     this.init();
 
     window.addEventListener("resize", () => this.onResize());
+
+
+  }
+
+  destroy() {
+
+    cancelAnimationFrame(this.#animationFrameId);
+    this.#mouseHandler.destroy();
+    window.removeEventListener("resize", () => this.onResize());
   }
 
   /**
@@ -114,9 +127,22 @@ export class VTT {
     return this.#windowSize;
   }
 
+  get selectedUnits() {
+    return this.#selectedUnits;
+  }
+
   /**
    * Setters
    */
+
+  set canvas(canvas: HTMLCanvasElement) {
+    this.#canvas = canvas;
+    this.#ctx = this.#canvas.getContext("2d") as CanvasRenderingContext2D;
+    this.#mouseHandler.destroy();
+    this.#mouseHandler = new MouseHandler(this);
+    this.setCanvasSize();
+    this.#shouldRender = true;
+  }
 
   set shouldRender(value: boolean) {
     this.#shouldRender = value;
@@ -178,6 +204,24 @@ export class VTT {
     this.#shouldRender = true;
   }
 
+  set selectedUnits(units: Unit[]) {
+    this.#selectedUnits = units;
+    this.#shouldRender = true;
+  }
+
+  selectUnit(unit: Unit, append: boolean) {
+    if (!append) {
+      this.#selectedUnits = [];
+    }
+    this.#selectedUnits.push(unit);
+    this.#shouldRender = true;
+  }
+
+  deselectUnit(unit: Unit) {
+    this.#selectedUnits = this.#selectedUnits.filter((u) => u.id !== unit.id);
+    this.#shouldRender = true;
+  }
+
   /**
    * Private methods
    */
@@ -212,7 +256,7 @@ export class VTT {
     this.resizeGrid();
 
     this.#grid.cells[5][5].createUnit({
-      name: "Player 1",
+      name: "John Doe",
       maxHealth: 100,
       type: "player",
     });
@@ -228,10 +272,7 @@ export class VTT {
     this.#shouldRender = true;
   }
 
-  private init() {
-    this.setCanvasSize();
-    this.renderLoop();
-  }
+
 
   private setCanvasSize() {
     this.#canvas.width = this.#windowSize.width;
@@ -240,6 +281,10 @@ export class VTT {
   }
 
   private async renderLoop() {
+    if (!this.canvas) {
+      console.warn("Canvas not found");
+      return;
+    };
     if (this.#shouldRender) {
       this.#shouldRender = false;
       this.#ctx.clearRect(
@@ -305,5 +350,18 @@ export class VTT {
     }
     const id = requestAnimationFrame(() => this.renderLoop());
     this.#animationFrameId = id;
+  }
+
+
+  /**
+   * Public methods
+   */
+  init() {
+    if (!this.#canvas) {
+      console.warn("Canvas not found");
+      return;
+    }
+    this.setCanvasSize();
+    this.renderLoop();
   }
 }

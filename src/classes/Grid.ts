@@ -16,13 +16,14 @@ export class Grid {
     return this.#cells;
   }
 
-  populateGrid(width: number, height: number): void {
+  populateGrid(columns: number, rows: number): void {
+    // TODO: Persist units
     const gridBackup = [...this.#cells];
     this.#cells = [];
-    for (let y = 0; y < height; y++) {
-      this.#cells[y] = [];
-      for (let x = 0; x < width; x++) {
-        this.#cells[y][x] = new Cell(this.#vtt, x, y);
+    for (let row = 0; row < rows; row++) {
+      this.#cells[row] = [];
+      for (let col = 0; col < columns; col++) {
+        this.#cells[row][col] = new Cell(this.#vtt, row, col);
       }
     }
   }
@@ -38,6 +39,8 @@ export class Grid {
   moveUnit(unit: Unit, from: Cell, to: Cell): void {
     from.removeUnit(unit);
     to.addUnit(unit);
+    unit.tempPosition = null;
     unit.cell = to;
+    this.#vtt.shouldRender = true;
   }
 }

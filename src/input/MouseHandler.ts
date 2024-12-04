@@ -1,32 +1,70 @@
+import { MouseEvent } from "react";
 import { VTT } from "../classes/VTT";
 import { Coordinates } from "../types/types";
+import { Cell } from "../classes/Cell";
+
+type MouseEventListener = (e: MouseEvent) => void;
+type ScrollEventListener = (e: WheelEvent) => void;
+type OtherEventListener = () => void;
+
+interface EventListeners {
+  mousemove: MouseEventListener;
+  wheel: ScrollEventListener;
+  mousedown: MouseEventListener;
+  mouseup: OtherEventListener;
+  contextmenu: MouseEventListener;
+  click: MouseEventListener;
+}
 
 export class MouseHandler {
+  #id: number;
   #vtt: VTT;
-  #mouseDragStart: Coordinates | null;
+  #panMovementStartCoordinates: Coordinates | null;
+  #moveUnitStartCoordinates: Coordinates | null;
+  #eventListeners: Partial<EventListeners> = {};
 
   constructor(vtt: VTT) {
-    this.#vtt = vtt;
-    this.#mouseDragStart = null;
 
-    this.#vtt.canvas.addEventListener("mousemove", (e) => this.mouseMove(e));
-    this.#vtt.canvas.addEventListener("wheel", (e) => this.onScroll(e));
-    this.#vtt.canvas.addEventListener("mousedown", (e) => this.mouseDown(e));
-    this.#vtt.canvas.addEventListener("mouseup", () => this.mouseUp());
-    this.#vtt.canvas.addEventListener("contextmenu", (e) =>
-      this.contextMenu(e)
-    );
-    this.#vtt.canvas.addEventListener("click", () =>
-      this.#vtt.grid.cells[4][4].onClick()
-    );
+    this.#id = Math.floor(Math.random() * 1000000);
+    this.#vtt = vtt;
+    this.#panMovementStartCoordinates = null;
+    this.#moveUnitStartCoordinates = null;
+    if (this.#vtt.canvas) {
+      this.#eventListeners = {
+        mousemove: this.mouseMove.bind(this),
+        wheel: this.onScroll.bind(this),
+        mousedown: this.mouseDown.bind(this),
+        mouseup: this.mouseUp.bind(this),
+        contextmenu: this.contextMenu.bind(this),
+        click: this.click.bind(this),
+      };
+
+      Object.keys(this.#eventListeners).forEach((key) => {
+        /* @ts-ignore */
+        this.#vtt.canvas.addEventListener(key, this.#eventListeners[key]);
+      });
+    }
+  }
+
+
+
+  destroy() {
+    Object.keys(this.#eventListeners).forEach((key) => {
+      /* @ts-ignore */
+      this.#vtt.canvas.removeEventListener(key, this.#eventListeners[key]);
+    });
+  }
+
+  private click(_event: MouseEvent) {
+
   }
 
   mouseMove(event: MouseEvent) {
     this.#vtt.mousePosition = { x: event.clientX, y: event.clientY };
-    if (this.#mouseDragStart) {
+    if (this.#panMovementStartCoordinates) {
       // set temp position within image. Allow going 1/4 of the image size outside of the image
-      const mouseDragX = this.#vtt.mousePosition.x - this.#mouseDragStart.x;
-      const mouseDragY = this.#vtt.mousePosition.y - this.#mouseDragStart.y;
+      const mouseDragX = this.#vtt.mousePosition.x - this.#panMovementStartCoordinates.x;
+      const mouseDragY = this.#vtt.mousePosition.y - this.#panMovementStartCoordinates.y;
 
       const zoomedDragX = mouseDragX / this.#vtt.zoom;
       const zoomedDragY = mouseDragY / this.#vtt.zoom;
@@ -56,6 +94,19 @@ export class MouseHandler {
         y: boundedY,
       };
     }
+    if (this.#moveUnitStartCoordinates) {
+      const unit = this.#vtt.selectedUnits[0];
+      if (unit) {
+        const unitSize = Math.min(unit.width, unit.height) * this.#vtt.zoom;
+        if (unit.tempPosition || this.getDistanceBetweenCoordinates(this.#moveUnitStartCoordinates, this.#vtt.mousePosition) > unitSize / 2) {
+          unit.tempPosition = {
+            x: this.#vtt.mousePosition.x - (unit.width * this.#vtt.zoom) / 2,
+            y: this.#vtt.mousePosition.y - (unit.height * this.#vtt.zoom) / 2,
+          };
+        }
+        this.#vtt.shouldRender = true;
+      }
+    }
   }
 
   contextMenu(event: MouseEvent) {
@@ -64,16 +115,47 @@ export class MouseHandler {
 
   mouseDown(event: MouseEvent) {
     // if right mouse button is clicked
-    if (event.button === 2 && !this.#mouseDragStart) {
-      this.#mouseDragStart = { ...this.#vtt.mousePosition };
+    if (event.button === 2 && !this.#panMovementStartCoordinates) {
+      this.#panMovementStartCoordinates = { ...this.#vtt.mousePosition };
+    }
+    // if left mouse button is clicked
+    if (event.button === 0) {
+      this.#moveUnitStartCoordinates = { ...this.#vtt.mousePosition };
+      const cell = this.getCellAtMousePosition();
+      if (cell?.units.length) {
+        const unit = cell.units[0];
+        this.#vtt.selectUnit(unit, event.ctrlKey || event.metaKey);
+      }
     }
   }
 
   mouseUp() {
-    this.#mouseDragStart = null;
+    this.#panMovementStartCoordinates = null;
+
     if (this.#vtt.tempPosition) {
       this.#vtt.position = { ...this.#vtt.tempPosition };
       this.#vtt.tempPosition = null;
+    }
+
+    if (this.#moveUnitStartCoordinates) {
+
+      const fromCell = this.getCellAtCoordinates(this.#moveUnitStartCoordinates);
+      const toCell = this.getCellAtMousePosition();
+      if (!fromCell || !toCell) {
+        return;
+      }
+      const unit = this.#vtt.selectedUnits[0];
+      if (!unit) {
+        return;
+      }
+
+      if (fromCell.id === toCell.id) {
+        unit.tempPosition = null;
+        unit.click();
+      } else {
+        this.#vtt.grid.moveUnit(unit, fromCell, toCell);
+      }
+      this.#moveUnitStartCoordinates = null;
     }
   }
 
@@ -88,5 +170,40 @@ export class MouseHandler {
       Math.max(0.25, this.#vtt.zoom + step * (direction === "in" ? 1 : -1)),
       3
     );
+  }
+
+  private getDistanceBetweenCoordinates(a: Coordinates, b: Coordinates) {
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  private getCellAtMousePosition() {
+    return this.getCellAtCoordinates(this.#vtt.mousePosition);
+  }
+
+  private getCellAtCoordinates(coordinates: Coordinates) {
+    const cellHeight = this.#vtt.gridSize.height * this.#vtt.zoom;
+    const cellWidth = this.#vtt.gridSize.width * this.#vtt.zoom;
+
+    let cell: Cell | undefined;
+    for (let x = 0; x < this.#vtt.grid.cells.length && !cell; x++) {
+      const testCellX = this.#vtt.grid.cells[x][0];
+
+      if (coordinates.y < testCellX.y ||
+        coordinates.y > testCellX.y + cellHeight) {
+        continue;
+      }
+
+      for (let y = 0; y < this.#vtt.grid.cells[x].length && !cell; y++) {
+        const testCellY = this.#vtt.grid.cells[x][y];
+        if (
+
+          coordinates.x > testCellY.x &&
+          coordinates.x < testCellY.x + cellWidth
+        ) {
+          cell = testCellY;
+        }
+      }
+    }
+    return cell;
   }
 }

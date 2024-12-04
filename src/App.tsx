@@ -1,50 +1,58 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import "./App.css";
 
-import { VTT } from "./classes/VTT";
 import { ConfigureMap } from "./interface/ConfigureMap";
-import { useMapSettings } from "./context/mapSettings";
+import { useMapSettings } from "./context/mapSettingsContext";
+import { useVtt } from "./context/vttContext";
 
 function App() {
-  const [game, setGame] = useState<VTT | null>(null);
   const { mapSettings } = useMapSettings();
+  const { vtt } = useVtt();
+
+
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+
+
     if (canvasRef.current) {
-      // get image url from query string
-      const urlParams = new URLSearchParams(window.location.search);
-      const imageUrl = urlParams.get("background");
-
-      setGame(new VTT(canvasRef.current.id, imageUrl ?? ""));
+      vtt.canvas = (canvasRef.current);
+      vtt.init();
     }
-  }, [canvasRef]);
+
+    return () => {
+      if (vtt) {
+        vtt.destroy();
+      }
+    }
+
+  }, [vtt]);
 
   useEffect(() => {
-    if (game) {
-      game.backgroundImage = mapSettings.backgroundImage;
+    if (vtt) {
+      vtt.backgroundImage = mapSettings.backgroundImage;
     }
-  }, [game, mapSettings.backgroundImage]);
+  }, [vtt, mapSettings.backgroundImage]);
 
   useEffect(() => {
-    if (game) {
-      game.gridXOffset = mapSettings.xOffset;
-      game.gridYOffset = mapSettings.yOffset;
-      game.gridColor = mapSettings.gridColor;
+    if (vtt) {
+      vtt.gridXOffset = mapSettings.xOffset;
+      vtt.gridYOffset = mapSettings.yOffset;
+      vtt.gridColor = mapSettings.gridColor;
     }
   }, [
-    game,
+    vtt,
     mapSettings.xOffset,
     mapSettings.yOffset,
     mapSettings.gridColor,
   ]);
 
   useEffect(() => {
-    if (game) {
-      game.gridSize = mapSettings.gridSize;
+    if (vtt) {
+      vtt.gridSize = mapSettings.gridSize;
     }
-  }, [game, mapSettings.gridSize]);
+  }, [vtt, mapSettings.gridSize]);
 
   return (
     <main>

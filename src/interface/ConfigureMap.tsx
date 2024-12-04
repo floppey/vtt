@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { MapSettings, useMapSettings } from "../context/mapSettings";
+import { MapSettings, useMapSettings } from "../context/mapSettingsContext";
 
 export const ConfigureMap: React.FC = () => {
   const { mapSettings, setMapSettings } = useMapSettings();

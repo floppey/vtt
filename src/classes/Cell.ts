@@ -2,6 +2,7 @@ import Unit, { InitUnitProps } from "./Unit";
 import { VTT } from "./VTT";
 
 export class Cell {
+  #id: number;
   #vtt: VTT;
   #row: number;
   #col: number;
@@ -9,9 +10,14 @@ export class Cell {
   #isSelected: boolean = false;
 
   constructor(vtt: VTT, row: number, col: number) {
+    this.#id = Math.floor(Math.random() * 10000000);
     this.#vtt = vtt;
     this.#row = row;
     this.#col = col;
+  }
+
+  get id(): number {
+    return this.#id;
   }
 
   get vtt(): VTT {
@@ -26,22 +32,26 @@ export class Cell {
     return this.#col;
   }
 
+  get units(): Unit[] {
+    return this.#units;
+  }
+
   get x(): number {
-    const { row } = this;
+    const { col } = this;
     const { gridSize, zoom, gridXOffset } = this.#vtt;
     const position = this.#vtt.getPosition();
     const gridSizeZoomed = gridSize.width * zoom;
     const xOffset = (gridXOffset - position.x) * zoom;
-    return row * gridSizeZoomed - xOffset;
+    return col * gridSizeZoomed - xOffset;
   }
 
   get y(): number {
-    const { col } = this;
+    const { row } = this;
     const { gridSize, zoom, gridYOffset } = this.#vtt;
     const position = this.#vtt.getPosition();
     const gridSizeZoomed = gridSize.height * zoom;
     const yOffset = (gridYOffset - position.y) * zoom;
-    return col * gridSizeZoomed - yOffset;
+    return row * gridSizeZoomed - yOffset;
   }
 
   onClick(): void {
