@@ -22,7 +22,7 @@ export interface MapSettingsContextProps {
 }
 
 const defaultSettings: MapSettings = {
-  backgroundImage: "",
+  backgroundImage: "/img/Magic Shop.jpg",
   gridSize: { width: 150, height: 150 },
   xOffset: 0,
   yOffset: 0,
