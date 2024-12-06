@@ -19,6 +19,7 @@ interface EventListeners {
 export class MouseHandler {
   #id: number;
   #created: number;
+  #destroyed: boolean = false;
   #vtt: VTT;
   #panMovementStartCoordinates: Coordinates | null;
   #moveUnitStartCoordinates: Coordinates | null;
@@ -39,26 +40,31 @@ export class MouseHandler {
         contextmenu: this.contextMenu.bind(this),
         click: this.click.bind(this),
       };
-
-      Object.keys(this.#eventListeners).forEach((key) => {
-        /* @ts-ignore */
-        this.#vtt.canvas.addEventListener(key, this.#eventListeners[key]);
-      });
     }
+  }
 
+  destroy() {
+    if (this.#destroyed) {
+      return;
+    }
+    this.#destroyed = true;
+    Object.keys(this.#eventListeners).forEach((key) => {
+      /* @ts-ignore */
+      this.#vtt.canvas.removeEventListener(key, this.#eventListeners[key]);
+    });
+  }
+
+  init() {
     if (!window.mousehandlers) {
       window.mousehandlers = [];
     }
     window.mousehandlers.forEach((handler: MouseHandler) => {
       handler.destroy();
     });
-    window.mousehandlers = [this];
-  }
-
-  destroy() {
+    window.mousehandlers.push(this);
     Object.keys(this.#eventListeners).forEach((key) => {
       /* @ts-ignore */
-      this.#vtt.canvas.removeEventListener(key, this.#eventListeners[key]);
+      this.#vtt.canvas.addEventListener(key, this.#eventListeners[key]);
     });
   }
 
@@ -172,7 +178,7 @@ export class MouseHandler {
       if (fromCell.id === toCell.id) {
         unit.tempPosition = null;
       } else {
-        this.#vtt.moveUnit(unit, fromCell, toCell);
+        this.#vtt.moveUnit(unit, toCell);
       }
       this.#moveUnitStartCoordinates = null;
     }
