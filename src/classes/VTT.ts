@@ -1,3 +1,4 @@
+import { KeyboardHandler } from "../input/KeyboardHandler";
 import { MouseHandler } from "../input/MouseHandler";
 import { Coordinates, Size } from "../types/types";
 import { Cell } from "./Cell";
@@ -14,6 +15,7 @@ export class VTT {
   #animationFrameId: number;
   #loading: boolean;
   #mouseHandler: MouseHandler;
+  #keyboardHandler: KeyboardHandler;
   #shouldRender: boolean;
   #backgroundImage: HTMLImageElement | null;
   #backgroundImageSize: Size;
@@ -51,6 +53,7 @@ export class VTT {
     this.#backgroundImageSizeNatural = { width: 0, height: 0 };
     this.#backgroundImage.onload = () => this.onImageLoad();
     this.#mouseHandler = new MouseHandler(this);
+    this.#keyboardHandler = new KeyboardHandler(this);
     this.#units = [];
     this.#grid = new Grid(this, 10, 10);
 
@@ -62,6 +65,7 @@ export class VTT {
   destroy() {
     cancelAnimationFrame(this.#animationFrameId);
     this.#mouseHandler.destroy();
+    this.#keyboardHandler.destroy();
     window.removeEventListener("resize", () => this.onResize());
   }
 
@@ -143,6 +147,10 @@ export class VTT {
     this.#ctx = this.#canvas.getContext("2d") as CanvasRenderingContext2D;
     this.#mouseHandler.destroy();
     this.#mouseHandler = new MouseHandler(this);
+    this.#mouseHandler.init();
+    this.#keyboardHandler.destroy();
+    this.#keyboardHandler = new KeyboardHandler(this);
+    this.#keyboardHandler.init();
     this.setCanvasSize();
     this.#shouldRender = true;
   }
