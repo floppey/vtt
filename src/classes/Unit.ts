@@ -12,6 +12,7 @@ export interface InitUnitProps {
 
 export default class Unit {
   #id: number;
+  #visionRadius: number = 6; // 6 cells = 30 feet
   #vtt: VTT;
   #gridPosition: GridPosition | null;
   #name: string;
@@ -19,6 +20,7 @@ export default class Unit {
   #currentHealth: number;
   #type: string;
   #tempPosition: Coordinates | null = null;
+  #exploredAreas: GridPosition[] = [];
 
   constructor({ vtt, name, maxHealth, type, gridPosition }: InitUnitProps) {
     this.#id = Math.floor(Math.random() * 10000000);
@@ -28,17 +30,28 @@ export default class Unit {
     this.#maxHealth = maxHealth;
     this.#currentHealth = maxHealth * 0.8;
     this.#type = type;
+    if (gridPosition) {
+      this.#exploredAreas.push(gridPosition);
+    }
   }
 
   get id(): number {
     return this.#id;
   }
 
+  get visionRadius(): number {
+    return this.#visionRadius;
+  }
+
+  get exploredAreas(): GridPosition[] {
+    return this.#exploredAreas;
+  }
+
   get cell(): Cell | null {
     if (!this.#gridPosition) {
       return null;
     }
-    return this.#vtt.grid.cells[this.#gridPosition?.row][
+    return this.#vtt.grid.cells[this.#gridPosition?.row]?.[
       this.#gridPosition?.col
     ];
   }
@@ -49,6 +62,17 @@ export default class Unit {
       return;
     }
     this.#gridPosition = { row: cell.row, col: cell.col };
+    if (
+      !this.#exploredAreas.some(
+        (area) => area.row === cell.row && area.col === cell.col
+      )
+    ) {
+      this.#exploredAreas.push(this.#gridPosition);
+    }
+  }
+
+  get vtt(): VTT {
+    return this.#vtt;
   }
 
   get width(): number {

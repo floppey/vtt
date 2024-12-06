@@ -1,5 +1,8 @@
 import { KeyboardHandler } from "../input/KeyboardHandler";
 import { MouseHandler } from "../input/MouseHandler";
+import { renderFogOfWar } from "../renderFunctions/renderFogOfWar";
+import { renderFullscreenImage } from "../renderFunctions/renderFullscreenImage";
+import { renderUnitVision } from "../renderFunctions/renderUnitVision";
 import { Coordinates, Size } from "../types/types";
 import { Cell } from "./Cell";
 import { Grid } from "./Grid";
@@ -273,7 +276,6 @@ export class VTT {
   private onImageLoad() {
     this.resizeGrid();
 
-    this.#position = { x: 0, y: 0 };
     this.#zoom = 1;
     this.#shouldRender = true;
     this.#loading = false;
@@ -285,6 +287,10 @@ export class VTT {
   }
 
   private setCanvasSize() {
+    if (!this.#canvas) {
+      console.warn("Canvas not found");
+      return;
+    }
     this.#canvas.width = this.#windowSize.width;
     this.#canvas.height = this.#windowSize.height;
     this.#shouldRender = true;
@@ -305,62 +311,14 @@ export class VTT {
       );
       this.#ctx.fillStyle = "black";
       this.#ctx.fillRect(0, 0, this.#windowSize.width, this.#windowSize.height);
-      const position = this.#tempPosition || this.#position;
-      const viewportSize: Size = {
-        width: this.#windowSize.width,
-        height: this.#windowSize.height,
-      };
+
       if (this.#backgroundImage?.complete) {
-        const visibleWidth =
-          Math.min(this.#backgroundImageSizeNatural.width, viewportSize.width) /
-          this.#zoom;
-        const visibleHeight =
-          Math.min(
-            this.#backgroundImageSizeNatural.height,
-            viewportSize.height
-          ) / this.#zoom;
-
-        const sxFactor =
-          this.#backgroundImageSizeNatural.width /
-          this.#backgroundImageSize.width;
-        const syFactor =
-          this.#backgroundImageSizeNatural.height /
-          this.#backgroundImageSize.height;
-
-        const sx = -position.x * sxFactor;
-        const sy = -position.y * syFactor;
-        const sw = visibleWidth;
-        const sh = visibleHeight;
-
-        const dx = 0;
-        const dy = 0;
-        const dw = viewportSize.width;
-        const dh = viewportSize.height;
-
-        // const backgroundSize = {
-        //   width: this.#backgroundImageSize.width / this.#zoom,
-        //   height: this.#backgroundImageSize.height / this.#zoom,
-        // }
-
-        // const dx = backgroundSize.width < viewportSize.width ? (viewportSize.width - backgroundSize.width) / 2 : 0;
-        // const dy = backgroundSize.height < viewportSize.height ? (viewportSize.height - backgroundSize.height) / 2 : 0;
-        // const dw = backgroundSize.width < viewportSize.width ? backgroundSize.width : viewportSize.width
-        // const dh = backgroundSize.height < viewportSize.height ? backgroundSize.height : viewportSize.height
-
-        this.#ctx.drawImage(
-          this.#backgroundImage,
-          sx,
-          sy,
-          sw,
-          sh,
-          dx,
-          dy,
-          dw,
-          dh
-        );
+        renderFullscreenImage(this, this.#backgroundImage);
       }
       this.#grid.draw();
+      this.units.forEach((unit) => renderFogOfWar(unit));
       this.#units.forEach((unit) => unit.draw());
+      renderUnitVision(this);
     }
     const id = requestAnimationFrame(() => this.renderLoop());
     this.#animationFrameId = id;
@@ -387,10 +345,25 @@ export class VTT {
         },
       }),
     ];
+    this.selectUnit(this.units[0], false);
+    const cell = this.units[0].cell;
+    if (cell) {
+      const centeredX = -cell.x;
+      const centeredY = -cell.y;
+      const cellPosition = {
+        x: centeredX,
+        y: centeredY,
+      };
+      this.position = cellPosition;
+    }
     this.renderLoop();
   }
 
-  moveUnit(unit: Unit, from: Cell, to: Cell): void {
+  moveUnit(unit: Unit, to: Cell): void {
+    if (!to) {
+      console.warn("Destination cell not found");
+      return;
+    }
     unit.tempPosition = null;
     unit.cell = to;
     this.shouldRender = true;
