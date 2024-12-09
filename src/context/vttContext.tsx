@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useState } from "react";
+import { VTT } from "@/vtt/classes/VTT";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
-import { VTT } from "../classes/VTT";
-
-type GlobalVTT = VTT;
+type GlobalVTT = VTT | null;
 
 export interface VTTContextProps {
   vtt: GlobalVTT;
@@ -16,7 +15,19 @@ interface VttProviderProps {
 }
 
 export const VttProvider: React.FC<VttProviderProps> = ({ children }) => {
-  const [vtt, setVtt] = useState<GlobalVTT>(new VTT("canvas", ""));
+  const [vtt, setVtt] = useState<GlobalVTT>(null);
+
+  useEffect(() => {
+    const storedWsChannel = localStorage.getItem("wschannel");
+    setVtt(new VTT("canvas", storedWsChannel));
+  }, []);
+
+  // Store map settings in local storage
+  useEffect(() => {
+    if (vtt?.websocketChannel) {
+      localStorage.setItem("wschannel", vtt.websocketChannel);
+    }
+  }, [vtt?.websocketChannel]);
 
   return (
     <VttContext.Provider value={{ vtt, setVtt }}>
