@@ -39,7 +39,7 @@ export class KeyboardHandler {
     });
   }
 
-  get getPressedKeys() {
+  get pressedKeys() {
     return this.#pressedKeys;
   }
 

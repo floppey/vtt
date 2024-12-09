@@ -1,4 +1,5 @@
 import { Coordinates, GridPosition } from "../types/types";
+import { get5eDistance } from "../util/get5eDistance";
 import { Cell } from "./Cell";
 import { VTT } from "./VTT";
 
@@ -20,6 +21,7 @@ export default class Unit {
   #currentHealth: number;
   #type: string;
   #tempPosition: Coordinates | null = null;
+  #tempPositions: Coordinates[] = [];
   #exploredAreas: GridPosition[] = [];
 
   constructor({ vtt, name, maxHealth, type, gridPosition }: InitUnitProps) {
@@ -89,10 +91,31 @@ export default class Unit {
 
   set tempPosition(tempPosition: Coordinates | null) {
     this.#tempPosition = tempPosition;
+    if (!tempPosition) {
+      this.#tempPositions = [];
+    }
   }
 
   get tempPosition(): Coordinates | null {
     return this.#tempPosition;
+  }
+
+  private getTempPositions(): (Coordinates | null)[] {
+    const positions: (Coordinates | null)[] = [
+      {
+        x: (this.cell?.col ?? 0) * this.#vtt.gridSize.width,
+        y: (this.cell?.row ?? 0) * this.#vtt.gridSize.height,
+      },
+      ...this.#tempPositions,
+      this.tempPosition,
+    ];
+    console.log("getTempPositions", positions);
+    return positions;
+  }
+
+  addTempPosition(position: Coordinates) {
+    this.#tempPositions.push(position);
+    console.log("temp positions", this.#tempPositions);
   }
 
   click(): void {
@@ -104,12 +127,118 @@ export default class Unit {
 
     this.drawUnit(offScreenCtx);
 
-    if (this.#tempPosition) {
+    if (this.tempPosition) {
       offScreenCtx.save();
-      offScreenCtx.globalAlpha = 0.5;
-      this.drawUnit(offScreenCtx, this.tempPosition!);
+      offScreenCtx.globalAlpha = 0.75;
+      this.drawUnit(offScreenCtx, this.tempPosition);
       offScreenCtx.restore();
+
+      // draw a line from the original position to the new position, with a circle at each end
+      this.drawPath();
     }
+  }
+
+  private drawPath() {
+    if (!this.tempPosition) {
+      return;
+    }
+    const { offScreenCtx } = this.#vtt;
+    const positions = this.getTempPositions();
+
+    offScreenCtx.save();
+    positions.forEach((position, index) => {
+      if (!position) {
+        return;
+      }
+      offScreenCtx.beginPath();
+      offScreenCtx.strokeStyle = "rgba(255,255,255,0.75)";
+      offScreenCtx.fillStyle = "rgba(0,0,255,0.5)";
+      offScreenCtx.lineWidth = Math.min(this.width, this.height) / 5;
+      const oldPosition = positions[index - 1];
+
+      const center = {
+        x: position.x + this.width / 2,
+        y: position.y + this.height / 2,
+      };
+      if (oldPosition) {
+        const oldCenter = {
+          x: oldPosition.x + this.width / 2,
+          y: oldPosition.y + this.height / 2,
+        };
+        offScreenCtx.moveTo(oldCenter.x, oldCenter.y);
+
+        offScreenCtx.lineTo(center.x, center.y);
+        offScreenCtx.stroke();
+        offScreenCtx.beginPath();
+        offScreenCtx.arc(
+          oldCenter.x,
+          oldCenter.y,
+          Math.min(this.width, this.height) / 5,
+          0,
+          Math.PI * 2
+        );
+        offScreenCtx.fill();
+
+        // Draw distance text at the center of the line
+        const distance = get5eDistance(oldCenter, center, this.#vtt.gridSize);
+        // Calculate midpoint
+        const midX = (oldCenter.x + center.x) / 2;
+        const midY = (oldCenter.y + center.y) / 2;
+        // Rotate text with the angle of the line
+        const angle = Math.atan2(
+          center.y - oldCenter.y,
+          center.x - oldCenter.x
+        );
+        // offScreenCtx.moveTo(
+        //   (center.x + oldCenter.x) / 2,
+        //   (center.y + oldCenter.y) / 2
+        // );
+        // offScreenCtx.save();
+        // offScreenCtx.rotate(angle);
+
+        // offScreenCtx.fillStyle = "black";
+        // offScreenCtx.font = "24px Arial";
+        // offScreenCtx.textAlign = "center";
+        // offScreenCtx.fillText(
+        //   `${distance} ft`,
+        //   (center.x + oldCenter.x) / 2,
+        //   (center.y + oldCenter.y) / 2
+        // );
+        // offScreenCtx.restore();
+
+        // Save the current canvas state
+        offScreenCtx.save();
+
+        // Translate to midpoint and rotate
+        offScreenCtx.translate(midX, midY);
+        offScreenCtx.rotate(angle);
+
+        // Adjust rotation to keep text upright
+        if (Math.abs(angle) > Math.PI / 2 || Math.abs(angle) < -Math.PI / 2) {
+          offScreenCtx.rotate(Math.PI);
+        }
+
+        // Draw distance text
+        offScreenCtx.fillStyle = "black";
+        offScreenCtx.font = "24px Arial";
+        offScreenCtx.textAlign = "center";
+        offScreenCtx.textBaseline = "middle";
+        offScreenCtx.fillText(`${distance} ft`, 0, 0);
+
+        // Restore canvas state
+        offScreenCtx.restore();
+      }
+      offScreenCtx.beginPath();
+      offScreenCtx.arc(
+        center.x,
+        center.y,
+        Math.min(this.width, this.height) / 5,
+        0,
+        Math.PI * 2
+      );
+      offScreenCtx.fill();
+    });
+    offScreenCtx.restore();
   }
 
   get isSelected(): boolean {

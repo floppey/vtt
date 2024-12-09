@@ -131,7 +131,6 @@ export class MouseHandler {
               unit.height / 2,
           };
         }
-        console.log("render all because of unit drag");
         this.#vtt.shouldRenderAll = true;
       }
     }
@@ -148,20 +147,22 @@ export class MouseHandler {
     }
     // if left mouse button is clicked
     if (event.button === 0) {
-      this.#moveUnitStartCoordinates = { ...this.#vtt.mousePosition };
-      const cell = this.getCellAtMousePosition();
-      if (cell) {
-        cell.onClick();
-      }
-      const unit = this.#vtt.units.find(
-        (unit) =>
-          unit.gridPosition?.col === cell?.col &&
-          unit.gridPosition?.row === cell?.row
-      );
-      if (unit) {
-        this.#vtt.selectUnit(unit, event.ctrlKey || event.metaKey);
-      } else {
-        this.#vtt.deselectAllUnits();
+      if (!this.#moveUnitStartCoordinates) {
+        const cell = this.getCellAtMousePosition();
+        if (cell) {
+          cell.onClick();
+        }
+        const unit = this.#vtt.units.find(
+          (unit) =>
+            unit.gridPosition?.col === cell?.col &&
+            unit.gridPosition?.row === cell?.row
+        );
+        if (unit) {
+          this.#moveUnitStartCoordinates = { ...this.#vtt.mousePosition };
+          this.#vtt.selectUnit(unit, event.ctrlKey || event.metaKey);
+        } else {
+          this.#vtt.deselectAllUnits();
+        }
       }
     }
   }
@@ -184,6 +185,15 @@ export class MouseHandler {
       }
       const unit = this.#vtt.selectedUnits[0];
       if (!unit) {
+        return;
+      }
+
+      // If control key is pressed, do not move the unit
+      if (this.#vtt.pressedKeys[17]) {
+        unit.addTempPosition({
+          x: toCell.getX() / this.#vtt.zoom,
+          y: toCell.getY() / this.#vtt.zoom,
+        });
         return;
       }
 

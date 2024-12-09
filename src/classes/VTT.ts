@@ -119,6 +119,10 @@ export class VTT {
     return this.#mousePosition;
   }
 
+  get pressedKeys() {
+    return this.#keyboardHandler.pressedKeys;
+  }
+
   get tempPosition() {
     return this.#tempPosition;
   }
@@ -334,7 +338,6 @@ export class VTT {
       return;
     }
     if (this.#renderConditions.background) {
-      console.log("render offscreen canvas");
       this.#renderConditions.background = false;
       this.#offScreenCtx.clearRect(
         0,
