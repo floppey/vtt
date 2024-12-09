@@ -1,3 +1,4 @@
+import { BaseClass } from "./BaseClass";
 import { VTT } from "./VTT";
 
 interface CellProps {
@@ -6,22 +7,17 @@ interface CellProps {
   col: number;
 }
 
-export class Cell {
-  #id: number;
+export class Cell extends BaseClass {
   #vtt: VTT;
   #row: number;
   #col: number;
   #isSelected: boolean = false;
 
   constructor({ vtt, row, col }: CellProps) {
-    this.#id = Math.floor(Math.random() * 10000000);
+    super();
     this.#vtt = vtt;
     this.#row = row;
     this.#col = col;
-  }
-
-  get id(): number {
-    return this.#id;
   }
 
   get vtt(): VTT {

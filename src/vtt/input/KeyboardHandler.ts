@@ -115,7 +115,7 @@ export class KeyboardHandler {
     }
     const to =
       this.#vtt.grid.cells[from.row + distance.row][from.col + distance.col];
-    this.#vtt.moveUnit(unit, to);
+    this.#vtt.moveUnit(unit, to, true);
   }
 
   destroy() {

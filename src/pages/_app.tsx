@@ -1,7 +1,7 @@
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
 import * as Ably from "ably";
-import { AblyProvider, ChannelProvider } from "ably/react";
+import { AblyProvider } from "ably/react";
 
 export default function App({ Component, pageProps }: AppProps) {
   const client = new Ably.Realtime({
@@ -9,9 +9,7 @@ export default function App({ Component, pageProps }: AppProps) {
   });
   return (
     <AblyProvider client={client}>
-      <ChannelProvider channelName="headlines">
-        <Component {...pageProps} />;
-      </ChannelProvider>
+      <Component {...pageProps} />;
     </AblyProvider>
   );
 }

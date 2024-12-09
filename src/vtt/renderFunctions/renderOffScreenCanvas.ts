@@ -23,6 +23,9 @@ export const renderOffScreenCanvas = (vtt: VTT): void => {
   const dy = 0;
   const dw = viewportSize.width;
   const dh = viewportSize.height;
-
-  drawCtx.drawImage(offScreenCanvas, sx, sy, sw, sh, dx, dy, dw, dh);
+  try {
+    drawCtx.drawImage(offScreenCanvas, sx, sy, sw, sh, dx, dy, dw, dh);
+  } catch (e) {
+    console.error(e);
+  }
 };

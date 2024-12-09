@@ -200,7 +200,7 @@ export class MouseHandler {
       if (fromCell.id === toCell.id) {
         unit.tempPosition = null;
       } else {
-        this.#vtt.moveUnit(unit, toCell);
+        this.#vtt.moveUnit(unit, toCell, true);
       }
       this.#moveUnitStartCoordinates = null;
     }

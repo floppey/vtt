@@ -1,3 +1,4 @@
+import { generateGuid } from "@/util/generateGuid";
 import { KeyboardHandler } from "../input/KeyboardHandler";
 import { MouseHandler } from "../input/MouseHandler";
 import { renderFogOfWar } from "../renderFunctions/renderFogOfWar";
@@ -8,9 +9,13 @@ import { Coordinates, Size } from "../types/types";
 import { Cell } from "./Cell";
 import { Grid } from "./Grid";
 import Unit from "./Unit";
+import { getQueryParameter } from "@/util/getQueryParameter";
+import { postMoveUnit } from "@/api/postMoveUnit";
+import { BaseClass } from "./BaseClass";
 
-export class VTT {
-  #id: number;
+export class VTT extends BaseClass {
+  #websocketChannel: string;
+  #websocketClientId: string;
   #canvas: HTMLCanvasElement;
   #ctx: CanvasRenderingContext2D;
   #offScreenCanvas: HTMLCanvasElement;
@@ -40,8 +45,11 @@ export class VTT {
   #units: Unit[];
   #selectedUnits: Unit[] = [];
 
-  constructor(canvasId: string, backgroundImageUrl: string) {
-    this.#id = Math.floor(Math.random() * 1000000);
+  constructor(canvasId: string, webSocketChannel: string | null) {
+    super();
+    this.#websocketChannel =
+      getQueryParameter("invite") || webSocketChannel || generateGuid();
+    this.#websocketClientId = `unset-${generateGuid()}`;
     this.#canvas = document.getElementById(canvasId) as HTMLCanvasElement;
     this.#ctx = this.#canvas?.getContext("2d") as CanvasRenderingContext2D;
     this.#isDebug = false;
@@ -66,7 +74,6 @@ export class VTT {
     this.#mousePosition = { x: 0, y: 0 };
     this.#loading = true;
     this.#backgroundImage = new Image();
-    this.#backgroundImage.src = backgroundImageUrl;
     this.#backgroundImageSize = { width: 0, height: 0 };
     this.#backgroundImageSizeNatural = { width: 0, height: 0 };
     this.#backgroundImage.onload = () => this.onImageLoad();
@@ -172,6 +179,14 @@ export class VTT {
     return this.#selectedUnits;
   }
 
+  get websocketChannel() {
+    return this.#websocketChannel;
+  }
+
+  get websocketClientId() {
+    return this.#websocketClientId;
+  }
+
   /**
    * Setters
    */
@@ -262,23 +277,8 @@ export class VTT {
     this.shouldRenderAll = true;
   }
 
-  selectUnit(unit: Unit, append: boolean) {
-    if (!append) {
-      this.deselectAllUnits();
-    }
-    this.#selectedUnits.push(unit);
-    this.shouldRenderAll = true;
-  }
-
-  deselectUnit(unit: Unit) {
-    this.#selectedUnits = this.#selectedUnits.filter((u) => u.id !== unit.id);
-    this.shouldRenderAll = true;
-  }
-
-  deselectAllUnits() {
-    if (this.#selectedUnits.length === 0) return;
-    this.#selectedUnits = [];
-    this.shouldRenderAll = true;
+  set websocketClientId(clientId: string) {
+    this.#websocketClientId = clientId;
   }
 
   /**
@@ -419,8 +419,8 @@ export class VTT {
         name: "Sir Lancelot",
         type: "unit",
         gridPosition: {
-          row: Math.floor(Math.random() * this.grid.cells.length),
-          col: Math.floor(Math.random() * this.grid.cells[0].length),
+          row: Math.floor(Math.random() * (this.grid?.cells?.length ?? 0)),
+          col: Math.floor(Math.random() * (this.grid?.cells?.[0]?.length ?? 0)),
         },
       }),
     ];
@@ -429,7 +429,26 @@ export class VTT {
     this.renderLoop();
   }
 
-  moveUnit(unit: Unit, to: Cell): void {
+  selectUnit(unit: Unit, append: boolean) {
+    if (!append) {
+      this.deselectAllUnits();
+    }
+    this.#selectedUnits.push(unit);
+    this.shouldRenderAll = true;
+  }
+
+  deselectUnit(unit: Unit) {
+    this.#selectedUnits = this.#selectedUnits.filter((u) => u.id !== unit.id);
+    this.shouldRenderAll = true;
+  }
+
+  deselectAllUnits() {
+    if (this.#selectedUnits.length === 0) return;
+    this.#selectedUnits = [];
+    this.shouldRenderAll = true;
+  }
+
+  moveUnit(unit: Unit, to: Cell, broadcast: boolean = false): void {
     if (!to) {
       console.warn("Destination cell not found");
       return;
@@ -437,5 +456,17 @@ export class VTT {
     unit.tempPosition = null;
     unit.cell = to;
     this.shouldRenderAll = true;
+
+    if (broadcast) {
+      postMoveUnit({
+        unit: unit,
+        destination: {
+          row: to.row,
+          col: to.col,
+        },
+        channelId: this.websocketChannel,
+        author: this.websocketClientId,
+      });
+    }
   }
 }

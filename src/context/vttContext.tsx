@@ -18,8 +18,16 @@ export const VttProvider: React.FC<VttProviderProps> = ({ children }) => {
   const [vtt, setVtt] = useState<GlobalVTT>(null);
 
   useEffect(() => {
-    setVtt(new VTT("canvas", ""));
+    const storedWsChannel = localStorage.getItem("wschannel");
+    setVtt(new VTT("canvas", storedWsChannel));
   }, []);
+
+  // Store map settings in local storage
+  useEffect(() => {
+    if (vtt?.websocketChannel) {
+      localStorage.setItem("wschannel", vtt.websocketChannel);
+    }
+  }, [vtt?.websocketChannel]);
 
   return (
     <VttContext.Provider value={{ vtt, setVtt }}>

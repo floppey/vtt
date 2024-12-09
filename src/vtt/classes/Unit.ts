@@ -1,5 +1,6 @@
 import { Coordinates, GridPosition } from "../types/types";
 import { get5eDistance } from "../util/distance/get5eDistance";
+import { BaseClass } from "./BaseClass";
 import { Cell } from "./Cell";
 import { VTT } from "./VTT";
 
@@ -11,8 +12,7 @@ export interface InitUnitProps {
   gridPosition: GridPosition | null;
 }
 
-export default class Unit {
-  #id: number;
+export default class Unit extends BaseClass {
   #visionRadius: number = 6; // 6 cells = 30 feet
   #vtt: VTT;
   #gridPosition: GridPosition | null;
@@ -25,7 +25,7 @@ export default class Unit {
   #exploredAreas: GridPosition[] = [];
 
   constructor({ vtt, name, maxHealth, type, gridPosition }: InitUnitProps) {
-    this.#id = Math.floor(Math.random() * 10000000);
+    super();
     this.#vtt = vtt;
     this.#gridPosition = gridPosition ?? null;
     this.#name = name;
@@ -35,10 +35,6 @@ export default class Unit {
     if (gridPosition) {
       this.#exploredAreas.push(gridPosition);
     }
-  }
-
-  get id(): number {
-    return this.#id;
   }
 
   get visionRadius(): number {
@@ -75,6 +71,22 @@ export default class Unit {
     ) {
       this.#exploredAreas.push(this.#gridPosition);
     }
+  }
+
+  set visionRadius(visionRadius: number) {
+    this.#visionRadius = visionRadius;
+  }
+
+  set exploredAreas(exploredAreas: GridPosition[]) {
+    this.#exploredAreas = exploredAreas;
+  }
+
+  set currentHealth(currentHealth: number) {
+    this.#currentHealth = currentHealth;
+  }
+
+  set name(name: string) {
+    this.#name = name;
   }
 
   get vtt(): VTT {
@@ -114,7 +126,6 @@ export default class Unit {
 
   addTempPosition(position: Coordinates) {
     this.#tempPositions.push(position);
-    console.log("temp positions", this.#tempPositions);
   }
 
   click(): void {
@@ -319,4 +330,40 @@ export default class Unit {
       height / 10
     );
   }
+
+  toString(): string {
+    const createProps: Omit<CreateUnitProps, "vtt"> = {
+      name: this.#name,
+      id: this.id,
+      maxHealth: this.#maxHealth,
+      currentHealth: this.#currentHealth,
+      exploredAreas: this.#exploredAreas,
+      type: this.#type,
+      gridPosition: this.#gridPosition,
+      visionRadius: this.#visionRadius,
+    };
+    return JSON.stringify(createProps);
+  }
 }
+
+export interface CreateUnitProps extends InitUnitProps {
+  id: string;
+  currentHealth: number;
+  exploredAreas: GridPosition[];
+  visionRadius: number;
+}
+
+export const createUnit = ({
+  id,
+  currentHealth,
+  exploredAreas,
+  visionRadius,
+  ...rest
+}: CreateUnitProps): Unit => {
+  const unit = new Unit(rest);
+  unit.id = id;
+  unit.currentHealth = currentHealth;
+  unit.exploredAreas = exploredAreas;
+  unit.visionRadius = visionRadius;
+  return unit;
+};

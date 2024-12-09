@@ -1,5 +1,6 @@
 import { VttWrapper } from "@/components/VttWrapper";
 import { MapSettingsProvider } from "@/context/mapSettingsContext";
+import { VttChannelProvider } from "@/context/VttChannelProvider";
 import { VttProvider } from "@/context/vttContext";
 import Head from "next/head";
 
@@ -13,13 +14,13 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <div>
-        <main>
-          <VttProvider>
-            <MapSettingsProvider>
+        <VttProvider>
+          <MapSettingsProvider>
+            <VttChannelProvider>
               <VttWrapper />
-            </MapSettingsProvider>
-          </VttProvider>
-        </main>
+            </VttChannelProvider>
+          </MapSettingsProvider>
+        </VttProvider>
       </div>
     </>
   );
