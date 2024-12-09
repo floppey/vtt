@@ -109,7 +109,6 @@ export default class Unit {
       ...this.#tempPositions,
       this.tempPosition,
     ];
-    console.log("getTempPositions", positions);
     return positions;
   }
 
