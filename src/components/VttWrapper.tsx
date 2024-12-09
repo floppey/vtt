@@ -1,18 +1,17 @@
+"use client";
+import { useMapSettings } from "@/context/mapSettingsContext";
+import { useVtt } from "@/context/vttContext";
 import { useEffect, useRef } from "react";
-import "./App.css";
+import { ConfigureMap } from "./ConfigureMap";
 
-import { ConfigureMap } from "./interface/ConfigureMap";
-import { useMapSettings } from "./context/mapSettingsContext";
-import { useVtt } from "./context/vttContext";
-
-function App() {
+export const VttWrapper: React.FC = () => {
   const { mapSettings } = useMapSettings();
   const { vtt } = useVtt();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (canvasRef.current) {
+    if (canvasRef.current && vtt) {
       vtt.canvas = canvasRef.current;
       vtt.init();
     }
@@ -59,6 +58,4 @@ function App() {
       </div>
     </main>
   );
-}
-
-export default App;
+};

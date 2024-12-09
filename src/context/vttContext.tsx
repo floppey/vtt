@@ -1,8 +1,7 @@
-import React, { createContext, useContext, useState } from "react";
+import { VTT } from "@/vtt/classes/VTT";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
-import { VTT } from "../classes/VTT";
-
-type GlobalVTT = VTT;
+type GlobalVTT = VTT | null;
 
 export interface VTTContextProps {
   vtt: GlobalVTT;
@@ -16,7 +15,11 @@ interface VttProviderProps {
 }
 
 export const VttProvider: React.FC<VttProviderProps> = ({ children }) => {
-  const [vtt, setVtt] = useState<GlobalVTT>(new VTT("canvas", ""));
+  const [vtt, setVtt] = useState<GlobalVTT>(null);
+
+  useEffect(() => {
+    setVtt(new VTT("canvas", ""));
+  }, []);
 
   return (
     <VttContext.Provider value={{ vtt, setVtt }}>

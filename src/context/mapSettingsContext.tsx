@@ -1,3 +1,5 @@
+import { Size } from "@/vtt/types/types";
+import { clamp } from "@/vtt/util/clamp";
 import React, {
   createContext,
   SetStateAction,
@@ -5,8 +7,6 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { Size } from "../types/types";
-import { clamp } from "../util/clamp";
 
 export interface MapSettings {
   backgroundImage: string;
@@ -27,7 +27,7 @@ const defaultSettings: MapSettings = {
   xOffset: 0,
   yOffset: 0,
   gridColor: "#989898",
-};
+} as const;
 
 export const MapSettingsContext = createContext<
   MapSettingsContextProps | undefined
@@ -41,10 +41,19 @@ export const MapSettingsProvider: React.FC<MapSettingsProviderProps> = ({
 }) => {
   const initialSettings = {
     ...defaultSettings,
-    ...JSON.parse(localStorage.getItem("mapSettings") ?? "{}"),
   };
 
   const [mapSettings, setMapSettings] = useState<MapSettings>(initialSettings);
+
+  useEffect(() => {
+    const storedSettings = localStorage.getItem("mapSettings");
+    if (storedSettings) {
+      setSafeMapSettings({
+        ...defaultSettings,
+        ...JSON.parse(storedSettings),
+      });
+    }
+  }, []);
 
   const setSafeMapSettings = (action: SetStateAction<MapSettings>) => {
     setMapSettings((prevSettings) => {
