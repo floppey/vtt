@@ -1,5 +1,5 @@
 import { Coordinates, GridPosition } from "../types/types";
-import { get5eDistance } from "../util/get5eDistance";
+import { get5eDistance } from "../util/distance/get5eDistance";
 import { Cell } from "./Cell";
 import { VTT } from "./VTT";
 
@@ -145,6 +145,8 @@ export default class Unit {
     const { offScreenCtx } = this.#vtt;
     const positions = this.getTempPositions();
 
+    let numberOfDiagonalMoves = 0;
+    let totalDistance = 0;
     offScreenCtx.save();
     positions.forEach((position, index) => {
       if (!position) {
@@ -180,7 +182,15 @@ export default class Unit {
         offScreenCtx.fill();
 
         // Draw distance text at the center of the line
-        const distance = get5eDistance(oldCenter, center, this.#vtt.gridSize);
+        const { numberOfFeet, diagonalMoves } = get5eDistance(
+          oldCenter,
+          center,
+          this.#vtt.gridSize,
+          5,
+          numberOfDiagonalMoves % 2 === 0
+        );
+        totalDistance += numberOfFeet;
+        numberOfDiagonalMoves += diagonalMoves;
         // Calculate midpoint
         const midX = (oldCenter.x + center.x) / 2;
         const midY = (oldCenter.y + center.y) / 2;
@@ -223,7 +233,7 @@ export default class Unit {
         offScreenCtx.font = "24px Arial";
         offScreenCtx.textAlign = "center";
         offScreenCtx.textBaseline = "middle";
-        offScreenCtx.fillText(`${distance} ft`, 0, 0);
+        offScreenCtx.fillText(`${numberOfFeet} ft`, 0, 0);
 
         // Restore canvas state
         offScreenCtx.restore();
@@ -237,6 +247,18 @@ export default class Unit {
         Math.PI * 2
       );
       offScreenCtx.fill();
+
+      // Draw the total distance at the end of the path
+      if (index === positions.length - 1) {
+        offScreenCtx.fillStyle = "black";
+        offScreenCtx.font = "36px Arial";
+        offScreenCtx.textAlign = "center";
+        offScreenCtx.fillText(
+          `${totalDistance} ft`,
+          center.x,
+          center.y - this.height / 3
+        );
+      }
     });
     offScreenCtx.restore();
   }
