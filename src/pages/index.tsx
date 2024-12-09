@@ -4,6 +4,8 @@ import { VttChannelProvider } from "@/context/VttChannelProvider";
 import { VttProvider } from "@/context/vttContext";
 import Head from "next/head";
 
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   return (
     <>
