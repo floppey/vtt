@@ -44,7 +44,7 @@ export class KeyboardHandler {
   }
 
   private keyDownHandler = (e: KeyboardEvent) => {
-    if (this.#pressedKeys[e.keyCode]) {
+    if (this.ignoreInput(e) || this.#pressedKeys[e.keyCode]) {
       return;
     }
 
@@ -58,7 +58,19 @@ export class KeyboardHandler {
     }
   };
 
+  private ignoreInput(e: KeyboardEvent) {
+    return (
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement ||
+      e.target instanceof HTMLButtonElement ||
+      e.target instanceof HTMLSelectElement
+    );
+  }
+
   private keyUpHandler = (e: KeyboardEvent) => {
+    if (this.ignoreInput(e)) {
+      return;
+    }
     this.#pressedKeys[e.keyCode] = false;
     switch (e.key) {
       // Movement
