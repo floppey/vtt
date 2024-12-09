@@ -109,8 +109,9 @@ export class MouseHandler {
     }
     if (this.#moveUnitStartCoordinates) {
       const unit = this.#vtt.selectedUnits[0];
+      const zoom = this.#vtt.zoom;
       if (unit) {
-        const unitSize = Math.min(unit.width, unit.height) * this.#vtt.zoom;
+        const unitSize = Math.min(unit.width, unit.height) * zoom;
         if (
           unit.tempPosition ||
           this.getDistanceBetweenCoordinates(
@@ -120,11 +121,18 @@ export class MouseHandler {
             unitSize / 2
         ) {
           unit.tempPosition = {
-            x: this.#vtt.mousePosition.x - (unit.width * this.#vtt.zoom) / 2,
-            y: this.#vtt.mousePosition.y - (unit.height * this.#vtt.zoom) / 2,
+            x:
+              this.#vtt.mousePosition.x / zoom -
+              this.#vtt.getPosition().x -
+              unit.width / 2,
+            y:
+              this.#vtt.mousePosition.y / zoom -
+              this.#vtt.getPosition().y -
+              unit.height / 2,
           };
         }
-        this.#vtt.shouldRender = true;
+        console.log("render all because of unit drag");
+        this.#vtt.shouldRenderAll = true;
       }
     }
   }
@@ -142,10 +150,14 @@ export class MouseHandler {
     if (event.button === 0) {
       this.#moveUnitStartCoordinates = { ...this.#vtt.mousePosition };
       const cell = this.getCellAtMousePosition();
+      if (cell) {
+        cell.onClick();
+      }
       const unit = this.#vtt.units.find(
-        (unit) => (unit.cell?.id ?? -1) === (cell?.id ?? -2)
+        (unit) =>
+          unit.gridPosition?.col === cell?.col &&
+          unit.gridPosition?.row === cell?.row
       );
-
       if (unit) {
         this.#vtt.selectUnit(unit, event.ctrlKey || event.metaKey);
       } else {
@@ -192,7 +204,7 @@ export class MouseHandler {
   private adjustZoom(direction: "in" | "out") {
     const step = 0.25;
     this.#vtt.zoom = Math.min(
-      Math.max(0.25, this.#vtt.zoom + step * (direction === "in" ? 1 : -1)),
+      Math.max(0.125, this.#vtt.zoom + step * (direction === "in" ? 1 : -1)),
       3
     );
   }
@@ -209,13 +221,18 @@ export class MouseHandler {
     const cellHeight = this.#vtt.gridSize.height * this.#vtt.zoom;
     const cellWidth = this.#vtt.gridSize.width * this.#vtt.zoom;
 
+    const vttPosition = this.#vtt.getPosition();
+
+    const xCoordinate = coordinates.x - vttPosition.x * this.#vtt.zoom;
+    const yCoordinate = coordinates.y - vttPosition.y * this.#vtt.zoom;
+
     let cell: Cell | undefined;
     for (let x = 0; x < this.#vtt.grid.cells.length && !cell; x++) {
       const testCellX = this.#vtt.grid.cells[x][0];
-
+      // Skip checking y values if the x value is outside of the cell
       if (
-        coordinates.y < testCellX.y ||
-        coordinates.y > testCellX.y + cellHeight
+        yCoordinate < testCellX.getY() ||
+        yCoordinate > testCellX.getY() + cellHeight
       ) {
         continue;
       }
@@ -223,8 +240,8 @@ export class MouseHandler {
       for (let y = 0; y < this.#vtt.grid.cells[x].length && !cell; y++) {
         const testCellY = this.#vtt.grid.cells[x][y];
         if (
-          coordinates.x > testCellY.x &&
-          coordinates.x < testCellY.x + cellWidth
+          xCoordinate > testCellY.getX() &&
+          xCoordinate < testCellY.getX() + cellWidth
         ) {
           cell = testCellY;
         }

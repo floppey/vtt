@@ -2,6 +2,7 @@ import { KeyboardHandler } from "../input/KeyboardHandler";
 import { MouseHandler } from "../input/MouseHandler";
 import { renderFogOfWar } from "../renderFunctions/renderFogOfWar";
 import { renderFullscreenImage } from "../renderFunctions/renderFullscreenImage";
+import { renderOffScreenCanvas } from "../renderFunctions/renderOffScreenCanvas";
 import { renderUnitVision } from "../renderFunctions/renderUnitVision";
 import { Coordinates, Size } from "../types/types";
 import { Cell } from "./Cell";
@@ -12,14 +13,20 @@ export class VTT {
   #id: number;
   #canvas: HTMLCanvasElement;
   #ctx: CanvasRenderingContext2D;
+  #offScreenCanvas: HTMLCanvasElement;
+  #offScreenCtx: CanvasRenderingContext2D;
   #gridSize: Size;
   #zoom: number;
   #windowSize: Size;
   #animationFrameId: number;
   #loading: boolean;
+  #isDebug: boolean;
   #mouseHandler: MouseHandler;
   #keyboardHandler: KeyboardHandler;
-  #shouldRender: boolean;
+  #renderConditions: {
+    background: boolean;
+    foreground: boolean;
+  };
   #backgroundImage: HTMLImageElement | null;
   #backgroundImageSize: Size;
   #backgroundImageSizeNatural: Size;
@@ -37,6 +44,11 @@ export class VTT {
     this.#id = Math.floor(Math.random() * 1000000);
     this.#canvas = document.getElementById(canvasId) as HTMLCanvasElement;
     this.#ctx = this.#canvas?.getContext("2d") as CanvasRenderingContext2D;
+    this.#isDebug = false;
+    this.#offScreenCanvas = document.createElement("canvas");
+    this.#offScreenCtx = this.#offScreenCanvas?.getContext(
+      "2d"
+    ) as CanvasRenderingContext2D;
     this.#gridSize = { width: 50, height: 50 };
     this.#gridColor = "#989898";
     this.#gridXOffset = 0;
@@ -45,7 +57,10 @@ export class VTT {
     this.#zoom = 1;
     this.#windowSize = { width: window.innerWidth, height: window.innerHeight };
     this.#animationFrameId = 0;
-    this.#shouldRender = true;
+    this.#renderConditions = {
+      background: true,
+      foreground: true,
+    };
     this.#position = { x: 0, y: 0 };
     this.#tempPosition = null;
     this.#mousePosition = { x: 0, y: 0 };
@@ -92,6 +107,10 @@ export class VTT {
     return this.#canvas;
   }
 
+  get offScreenCanvas() {
+    return this.#offScreenCanvas;
+  }
+
   get grid() {
     return this.#grid;
   }
@@ -112,6 +131,10 @@ export class VTT {
     return this.#ctx;
   }
 
+  get offScreenCtx() {
+    return this.#offScreenCtx;
+  }
+
   get gridSize() {
     return this.#gridSize;
   }
@@ -122,6 +145,10 @@ export class VTT {
 
   get units() {
     return this.#units;
+  }
+
+  get isDebug() {
+    return this.#isDebug;
   }
 
   /** Get the position that should be used for rendering */
@@ -155,26 +182,35 @@ export class VTT {
     this.#keyboardHandler = new KeyboardHandler(this);
     this.#keyboardHandler.init();
     this.setCanvasSize();
-    this.#shouldRender = true;
+    this.shouldRenderAll = true;
   }
 
-  set shouldRender(value: boolean) {
-    this.#shouldRender = value;
+  set shouldRenderBackground(render: boolean) {
+    this.#renderConditions.background = render;
+  }
+
+  set shouldRenderForeground(render: boolean) {
+    this.#renderConditions.foreground = render;
+  }
+
+  set shouldRenderAll(render: boolean) {
+    this.shouldRenderBackground = render;
+    this.shouldRenderForeground = render;
   }
 
   set gridXOffset(offset: number) {
     this.#gridXOffset = offset;
-    this.#shouldRender = true;
+    this.shouldRenderAll = true;
   }
 
   set gridYOffset(offset: number) {
     this.#gridYOffset = offset;
-    this.#shouldRender = true;
+    this.shouldRenderAll = true;
   }
 
   set gridColor(color: string) {
     this.#gridColor = color;
-    this.#shouldRender = true;
+    this.shouldRenderAll = true;
   }
 
   set windowSize(size: { width: number; height: number }) {
@@ -201,25 +237,25 @@ export class VTT {
 
   set position(position: Coordinates) {
     this.#position = position;
-    this.#shouldRender = true;
+    this.shouldRenderForeground = true;
   }
 
   set tempPosition(position: Coordinates | null) {
     this.#tempPosition = position;
     if (position !== null) {
-      this.#shouldRender = true;
+      this.shouldRenderForeground = true;
     }
   }
 
   set zoom(zoom: number) {
     if (this.#zoom === zoom) return;
     this.#zoom = zoom;
-    this.#shouldRender = true;
+    this.shouldRenderForeground = true;
   }
 
   set selectedUnits(units: Unit[]) {
     this.#selectedUnits = units;
-    this.#shouldRender = true;
+    this.shouldRenderAll = true;
   }
 
   selectUnit(unit: Unit, append: boolean) {
@@ -227,18 +263,18 @@ export class VTT {
       this.deselectAllUnits();
     }
     this.#selectedUnits.push(unit);
-    this.#shouldRender = true;
+    this.shouldRenderAll = true;
   }
 
   deselectUnit(unit: Unit) {
     this.#selectedUnits = this.#selectedUnits.filter((u) => u.id !== unit.id);
-    this.#shouldRender = true;
+    this.shouldRenderAll = true;
   }
 
   deselectAllUnits() {
     if (this.#selectedUnits.length === 0) return;
     this.#selectedUnits = [];
-    this.#shouldRender = true;
+    this.shouldRenderAll = true;
   }
 
   /**
@@ -250,67 +286,69 @@ export class VTT {
       width: this.#backgroundImage?.naturalWidth || 0,
       height: this.#backgroundImage?.naturalHeight || 0,
     };
+
     this.#backgroundImageSize = {
       width: this.#backgroundImage?.naturalWidth || 0,
       height: this.#backgroundImage?.naturalHeight || 0,
     };
 
-    if (
-      this.backgroundImageSize.width < this.windowSize.width ||
-      this.backgroundImageSize.height < this.windowSize.height
-    ) {
-      this.#backgroundImageSize.width = this.windowSize.width;
-      this.#backgroundImageSize.height = this.windowSize.height;
-    }
+    this.#offScreenCanvas.width = this.#backgroundImageSize.width;
+    this.#offScreenCanvas.height = this.#backgroundImageSize.height;
 
     const numberOfColumns = Math.ceil(
-      this.#backgroundImageSize.width / this.#gridSize.width
+      this.#backgroundImageSizeNatural.width / this.#gridSize.width
     );
     const numberOfRows = Math.ceil(
-      this.#backgroundImageSize.height / this.#gridSize.height
+      this.#backgroundImageSizeNatural.height / this.#gridSize.height
     );
     this.#grid.populateGrid(numberOfColumns, numberOfRows);
-    this.#shouldRender = true;
+    this.shouldRenderAll = true;
   }
 
   private onImageLoad() {
     this.resizeGrid();
 
     this.#zoom = 1;
-    this.#shouldRender = true;
+    this.shouldRenderAll = true;
     this.#loading = false;
   }
 
   private onResize() {
     this.windowSize = { width: window.innerWidth, height: window.innerHeight };
-    this.#shouldRender = true;
+    this.shouldRenderForeground = true;
   }
 
   private setCanvasSize() {
     if (!this.#canvas) {
-      console.warn("Canvas not found");
+      console.warn("Canvas not found - setCanvasSize");
       return;
     }
     this.#canvas.width = this.#windowSize.width;
     this.#canvas.height = this.#windowSize.height;
-    this.#shouldRender = true;
+    this.shouldRenderForeground = true;
   }
 
   private async renderLoop() {
     if (!this.canvas) {
-      console.warn("Canvas not found");
+      console.warn("Canvas not found - renderLoop");
       return;
     }
-    if (this.#shouldRender) {
-      this.#shouldRender = false;
-      this.#ctx.clearRect(
+    if (this.#renderConditions.background) {
+      console.log("render offscreen canvas");
+      this.#renderConditions.background = false;
+      this.#offScreenCtx.clearRect(
         0,
         0,
-        this.#windowSize.width,
-        this.#windowSize.height
+        this.#offScreenCanvas.width,
+        this.#offScreenCanvas.height
       );
-      this.#ctx.fillStyle = "black";
-      this.#ctx.fillRect(0, 0, this.#windowSize.width, this.#windowSize.height);
+      this.#offScreenCtx.fillStyle = "black";
+      this.#offScreenCtx.fillRect(
+        0,
+        0,
+        this.#offScreenCanvas.width,
+        this.#offScreenCanvas.height
+      );
 
       if (this.#backgroundImage?.complete) {
         renderFullscreenImage(this, this.#backgroundImage);
@@ -319,6 +357,23 @@ export class VTT {
       this.units.forEach((unit) => renderFogOfWar(unit));
       this.#units.forEach((unit) => unit.draw());
       renderUnitVision(this);
+    }
+    if (this.#renderConditions.foreground) {
+      this.#renderConditions.foreground = false;
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      renderOffScreenCanvas(this);
+      this.ctx.fillStyle = "white";
+      this.ctx.fillRect(0, 0, this.canvas.width, 75);
+      this.ctx.textAlign = "center";
+      this.ctx.font = "48px Arial";
+      this.ctx.fillStyle = "black";
+      this.ctx.fillText(
+        `zoom: ${this.zoom.toFixed(2)} | position: ${this.position.x.toFixed(
+          1
+        )}, ${this.position.y.toFixed(1)}`,
+        this.canvas.width / 2,
+        50
+      );
     }
     const id = requestAnimationFrame(() => this.renderLoop());
     this.#animationFrameId = id;
@@ -329,7 +384,7 @@ export class VTT {
    */
   init() {
     if (!this.#canvas) {
-      console.warn("Canvas not found");
+      console.warn("Canvas not found - init");
       return;
     }
     this.setCanvasSize();
@@ -347,15 +402,15 @@ export class VTT {
     ];
     this.selectUnit(this.units[0], false);
     const cell = this.units[0].cell;
-    if (cell) {
-      const centeredX = -cell.x;
-      const centeredY = -cell.y;
-      const cellPosition = {
-        x: centeredX,
-        y: centeredY,
-      };
-      this.position = cellPosition;
-    }
+    // if (cell) {
+    //   const centeredX = -cell.x;
+    //   const centeredY = -cell.y;
+    //   const cellPosition = {
+    //     x: centeredX,
+    //     y: centeredY,
+    //   };
+    //   this.position = cellPosition;
+    // }
     this.renderLoop();
   }
 
@@ -366,6 +421,6 @@ export class VTT {
     }
     unit.tempPosition = null;
     unit.cell = to;
-    this.shouldRender = true;
+    this.shouldRenderAll = true;
   }
 }

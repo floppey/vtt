@@ -1,5 +1,11 @@
 import { VTT } from "./VTT";
 
+interface CellProps {
+  vtt: VTT;
+  row: number;
+  col: number;
+}
+
 export class Cell {
   #id: number;
   #vtt: VTT;
@@ -7,7 +13,7 @@ export class Cell {
   #col: number;
   #isSelected: boolean = false;
 
-  constructor(vtt: VTT, row: number, col: number) {
+  constructor({ vtt, row, col }: CellProps) {
     this.#id = Math.floor(Math.random() * 10000000);
     this.#vtt = vtt;
     this.#row = row;
@@ -30,39 +36,52 @@ export class Cell {
     return this.#col;
   }
 
-  get x(): number {
-    const { col } = this;
-    const { gridSize, zoom, gridXOffset } = this.#vtt;
-    const position = this.#vtt.getPosition();
-    const gridSizeZoomed = gridSize.width * zoom;
-    const xOffset = (gridXOffset - position.x) * zoom;
-    return col * gridSizeZoomed - xOffset;
+  getY(): number {
+    return this.#row * this.#vtt.gridSize.height * this.#vtt.zoom;
   }
 
-  get y(): number {
-    const { row } = this;
-    const { gridSize, zoom, gridYOffset } = this.#vtt;
-    const position = this.#vtt.getPosition();
-    const gridSizeZoomed = gridSize.height * zoom;
-    const yOffset = (gridYOffset - position.y) * zoom;
-    return row * gridSizeZoomed - yOffset;
+  getX(): number {
+    return this.#col * this.#vtt.gridSize.width * this.#vtt.zoom;
   }
 
   onClick(): void {
-    this.#isSelected = !this.#isSelected;
-    this.#vtt.shouldRender = true;
+    if (this.vtt.isDebug) {
+      this.#isSelected = !this.#isSelected;
+      this.#vtt.shouldRenderAll = true;
+    }
   }
 
   draw(): void {
-    const { ctx, gridSize, zoom, gridColor } = this.#vtt;
-    const width = gridSize.width * zoom;
-    const height = gridSize.height * zoom;
-    ctx.strokeStyle = gridColor;
-    ctx.strokeRect(this.x, this.y, width, height);
+    const { offScreenCtx, gridSize, gridColor } = this.#vtt;
+    const width = gridSize.width;
+    const height = gridSize.height;
+    offScreenCtx.strokeStyle = gridColor;
+    offScreenCtx.strokeRect(
+      this.#col * height,
+      this.#row * width,
+      width,
+      height
+    );
 
     if (this.#isSelected) {
-      ctx.fillStyle = "rgba(0, 0, 255, 0.5)";
-      ctx.fillRect(this.x, this.y, width, height);
+      offScreenCtx.fillStyle = "rgba(0, 0, 255, 0.5)";
+      offScreenCtx.fillRect(
+        this.#col * height,
+        this.#row * width,
+        width,
+        height
+      );
+    }
+
+    if (this.vtt.isDebug) {
+      offScreenCtx.fillStyle = "orange";
+      offScreenCtx.font = "24px Arial";
+      offScreenCtx.textAlign = "center";
+      offScreenCtx.fillText(
+        `${this.#row}, ${this.#col}`,
+        this.#col * height + height / 2,
+        this.#row * width + width / 2
+      );
     }
   }
 }

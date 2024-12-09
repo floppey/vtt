@@ -56,6 +56,10 @@ export default class Unit {
     ];
   }
 
+  get gridPosition(): GridPosition | null {
+    return this.#gridPosition;
+  }
+
   set cell(cell: Cell | null) {
     if (!cell) {
       this.#gridPosition = null;
@@ -92,19 +96,19 @@ export default class Unit {
   }
 
   click(): void {
-    this.#vtt.shouldRender = true;
+    this.#vtt.shouldRenderAll = true;
   }
 
   draw() {
-    const { ctx } = this.#vtt;
+    const { offScreenCtx } = this.#vtt;
 
-    this.drawUnit(ctx);
+    this.drawUnit(offScreenCtx);
 
     if (this.#tempPosition) {
-      ctx.save();
-      ctx.globalAlpha = 0.5;
-      this.drawUnit(ctx, this.tempPosition!);
-      ctx.restore();
+      offScreenCtx.save();
+      offScreenCtx.globalAlpha = 0.5;
+      this.drawUnit(offScreenCtx, this.tempPosition!);
+      offScreenCtx.restore();
     }
   }
 
@@ -116,14 +120,20 @@ export default class Unit {
     ctx: CanvasRenderingContext2D,
     position?: Coordinates | null
   ) {
-    position = position ?? this.cell;
+    const { gridSize } = this.#vtt;
+    const width = gridSize.width;
+    const height = gridSize.height;
+    if (!position) {
+      position = {
+        x: (this.cell?.col ?? 0) * width,
+        y: (this.cell?.row ?? 0) * height,
+      };
+    }
+    const { x, y } = position;
+
     if (!position) {
       return;
     }
-    const { gridSize, zoom } = this.#vtt;
-    const width = gridSize.width * zoom;
-    const height = gridSize.height * zoom;
-    const { x, y } = position;
 
     ctx.fillStyle = "green";
     ctx.fillRect(x, y, width, height);
@@ -131,6 +141,14 @@ export default class Unit {
     ctx.fillStyle = "black";
     ctx.textAlign = "center";
     ctx.fillText(this.#name, x + width / 2, y + height / 2, width);
+    if (this.vtt.isDebug) {
+      ctx.fillText(
+        `${this.cell?.row}, ${this.cell?.col}`,
+        x + width / 2,
+        y + height / 2 + 20,
+        width
+      );
+    }
 
     if (this.isSelected) {
       ctx.save();

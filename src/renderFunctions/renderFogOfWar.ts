@@ -3,8 +3,8 @@ import { renderFullscreenImage } from "./renderFullscreenImage";
 
 export const renderFogOfWar = (unit: Unit): void => {
   if (!unit.cell) return;
-  const { ctx, grid, gridSize } = unit.vtt ?? {};
-  if (!ctx || !grid) return;
+  const { offScreenCtx, grid, gridSize } = unit.vtt ?? {};
+  if (!offScreenCtx || !grid) return;
 
   // Create a temporary canvas for the fog
   const fogCanvas = document.createElement("canvas");
@@ -42,6 +42,6 @@ export const renderFogOfWar = (unit: Unit): void => {
   fogCtx.fill(); // Clear the explored areas from the fog layer
 
   // Step 3: Draw the fog layer on the main canvas
-  ctx.globalCompositeOperation = "source-over";
+  offScreenCtx.globalCompositeOperation = "source-over";
   renderFullscreenImage(unit.vtt, fogCanvas);
 };

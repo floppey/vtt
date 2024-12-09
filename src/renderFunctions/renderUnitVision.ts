@@ -1,10 +1,11 @@
 import { VTT } from "../classes/VTT";
+import { renderFullscreenImage } from "./renderFullscreenImage";
 
 export const renderUnitVision = (vtt: VTT) => {
   // Create a temporary canvas for the fog
   const fogCanvas = document.createElement("canvas");
-  const mapWidth = vtt.canvas.width;
-  const mapHeight = vtt.canvas.height;
+  const mapWidth = vtt.offScreenCanvas.width;
+  const mapHeight = vtt.offScreenCanvas.height;
   fogCanvas.width = mapWidth;
   fogCanvas.height = mapHeight;
   const fogCtx = fogCanvas.getContext("2d");
@@ -19,10 +20,12 @@ export const renderUnitVision = (vtt: VTT) => {
   // Clear fog of war around units
   units.forEach((unit) => {
     if (!unit.cell) return;
-    const { x, y } = unit.cell;
 
-    const centerX = x + (unit.width / 2) * vtt.zoom;
-    const centerY = y + (unit.height / 2) * vtt.zoom;
+    const x = unit.cell.col * vtt.gridSize.width;
+    const y = unit.cell.row * vtt.gridSize.height;
+
+    const centerX = x + unit.width / 2;
+    const centerY = y + unit.height / 2;
 
     // Create radial gradient for vision
     const gradient = fogCtx.createRadialGradient(
@@ -31,7 +34,7 @@ export const renderUnitVision = (vtt: VTT) => {
       0,
       centerX,
       centerY,
-      unit.visionRadius * vtt.gridSize.width * vtt.zoom
+      unit.visionRadius * vtt.gridSize.width
     );
     gradient.addColorStop(0, "rgba(0, 0, 0, 1)");
     gradient.addColorStop(1, "rgba(0, 0, 0, 0.9)");
@@ -43,7 +46,7 @@ export const renderUnitVision = (vtt: VTT) => {
     fogCtx.arc(
       centerX,
       centerY,
-      unit.visionRadius * vtt.gridSize.width * vtt.zoom,
+      unit.visionRadius * vtt.gridSize.width,
       0,
       Math.PI * 2
     );
@@ -51,5 +54,5 @@ export const renderUnitVision = (vtt: VTT) => {
   });
 
   // Draw the fog overlay
-  vtt.ctx.drawImage(fogCanvas, 0, 0);
+  renderFullscreenImage(vtt, fogCanvas);
 };
