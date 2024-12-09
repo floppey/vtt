@@ -3,7 +3,7 @@ import { generateRandomNameWithTitle } from "@/util/generateRandomUser";
 import Ably from "ably";
 
 export default async function handler(
-  req: NextApiRequest,
+  _req: NextApiRequest,
   res: NextApiResponse<Ably.TokenRequest>
 ) {
   const client = new Ably.Rest(process.env.ABLY_CLIENT_API_KEY ?? "");
