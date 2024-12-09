@@ -364,22 +364,43 @@ export class VTT {
     if (this.#renderConditions.foreground) {
       this.#renderConditions.foreground = false;
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.fillStyle = "#36454f";
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
       renderOffScreenCanvas(this);
-      this.ctx.fillStyle = "white";
-      this.ctx.fillRect(0, 0, this.canvas.width, 75);
-      this.ctx.textAlign = "center";
-      this.ctx.font = "48px Arial";
-      this.ctx.fillStyle = "black";
-      this.ctx.fillText(
-        `zoom: ${this.zoom.toFixed(2)} | position: ${this.position.x.toFixed(
-          1
-        )}, ${this.position.y.toFixed(1)}`,
-        this.canvas.width / 2,
-        50
-      );
+      if (this.#isDebug) {
+        this.ctx.fillStyle = "white";
+        this.ctx.fillRect(0, 0, this.canvas.width, 75);
+        this.ctx.textAlign = "center";
+        this.ctx.font = "48px Arial";
+        this.ctx.fillStyle = "black";
+        this.ctx.fillText(
+          `zoom: ${this.zoom.toFixed(2)} | position: ${this.position.x.toFixed(
+            1
+          )}, ${this.position.y.toFixed(1)}`,
+          this.canvas.width / 2,
+          50
+        );
+      }
     }
     const id = requestAnimationFrame(() => this.renderLoop());
     this.#animationFrameId = id;
+  }
+
+  private centerCanvasOnUnit(unit: Unit) {
+    const cell = unit.cell;
+    if (cell) {
+      const centeredX = cell.col * this.gridSize.width;
+      const centeredY = cell.row * this.gridSize.height;
+      const cellPosition = {
+        x: centeredX,
+        y: centeredY,
+      };
+      const cellCenteredOnScreen = {
+        x: this.windowSize.width / 2 - cellPosition.x,
+        y: this.windowSize.height / 2 - cellPosition.y,
+      };
+      this.position = cellCenteredOnScreen;
+    }
   }
 
   /**
@@ -404,16 +425,7 @@ export class VTT {
       }),
     ];
     this.selectUnit(this.units[0], false);
-    const cell = this.units[0].cell;
-    // if (cell) {
-    //   const centeredX = -cell.x;
-    //   const centeredY = -cell.y;
-    //   const cellPosition = {
-    //     x: centeredX,
-    //     y: centeredY,
-    //   };
-    //   this.position = cellPosition;
-    // }
+    this.centerCanvasOnUnit(this.units[0]);
     this.renderLoop();
   }
 
