@@ -40,7 +40,7 @@ export const ConfigureMap: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="window window--map">
       <h2>Map Settings</h2>
       <div>
         <label>
