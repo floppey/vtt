@@ -4,6 +4,7 @@ import { AblyProvider } from "ably/react";
 import { MapSettingsProvider } from "./mapSettingsContext";
 import { VttProvider } from "./vttContext";
 import { VttChannelProvider } from "./vttChannelContext";
+import { useState } from "react";
 
 interface ProviderOfAllThingsProps {
   children: React.ReactNode;
@@ -14,9 +15,11 @@ const ProviderOfAllThings: React.FC<ProviderOfAllThingsProps> = ({
   children,
   channelId,
 }) => {
-  const client = new Ably.Realtime({
-    authUrl: `${process.env.NEXT_PUBLIC_HOSTNAME}/api/createTokenRequest`,
-  });
+  const [client] = useState(
+    new Ably.Realtime({
+      authUrl: `${process.env.NEXT_PUBLIC_HOSTNAME}/api/createTokenRequest`,
+    })
+  );
   return (
     <AblyProvider client={client}>
       <VttChannelProvider channel={channelId}>
