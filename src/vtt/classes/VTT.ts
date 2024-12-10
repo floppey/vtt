@@ -64,8 +64,8 @@ export class VTT extends BaseClass {
     this.#windowSize = { width: window.innerWidth, height: window.innerHeight };
     this.#animationFrameId = 0;
     this.#renderConditions = {
-      background: true,
-      foreground: true,
+      background: false,
+      foreground: false,
     };
     this.#position = { x: 0, y: 0 };
     this.#tempPosition = null;
@@ -333,6 +333,20 @@ export class VTT extends BaseClass {
   private async renderLoop() {
     if (!this.canvas) {
       console.warn("Canvas not found - renderLoop");
+      return;
+    }
+    if (this.#loading) {
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.fillStyle = "black";
+      this.ctx.font = "48px Arial";
+      this.ctx.textAlign = "center";
+      this.ctx.fillText(
+        "Loading...",
+        this.canvas.width / 2,
+        this.canvas.height / 2
+      );
+      const id = requestAnimationFrame(() => this.renderLoop());
+      this.#animationFrameId = id;
       return;
     }
     if (this.#renderConditions.background) {
