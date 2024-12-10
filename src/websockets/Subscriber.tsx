@@ -1,3 +1,4 @@
+import { useVttChannel } from "@/context/vttChannelContext";
 import { useVtt } from "@/context/vttContext";
 import { createUnit, CreateUnitProps } from "@/vtt/classes/Unit";
 import { GridPosition } from "@/vtt/types/types";
@@ -20,8 +21,9 @@ type MyMessages = Omit<Message, "message" | "data"> &
 
 export const Subscriber: React.FC = () => {
   const { vtt } = useVtt();
+  const { channel } = useVttChannel();
 
-  useChannel(vtt?.websocketChannel ?? "", (message) => {
+  useChannel(channel, (message) => {
     const myMessage = message as MyMessages;
     if (myMessage.data.author === vtt?.websocketClientId) {
       return;

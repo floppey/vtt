@@ -1,12 +1,14 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --forground-active: #0078d4;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #282c34;
     --foreground: #ededed;
+    --forground-active: #0078d4;
   }
 }
 
@@ -60,4 +62,20 @@ a {
   position: absolute;
   bottom: 0;
   left: 0;
+}
+
+
+#new-game {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  justify-content: center;
+  align-items: center;
+}
+
+#new-game a {
+  font-size: 3rem;
+  cursor: pointer;
+  color: var(--forground-active);
 }

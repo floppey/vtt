@@ -5,10 +5,12 @@ import { useEffect, useRef } from "react";
 import { ConfigureMap } from "./ConfigureMap";
 import { Participants } from "./Participants";
 import { Subscriber } from "@/websockets/Subscriber";
+import { useVttChannel } from "@/context/vttChannelContext";
 
 export const VttWrapper: React.FC = () => {
   const { mapSettings } = useMapSettings();
   const { vtt } = useVtt();
+  const { channel } = useVttChannel();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -50,8 +52,8 @@ export const VttWrapper: React.FC = () => {
       <canvas ref={canvasRef} id="canvas" width="800" height="600"></canvas>
 
       <ConfigureMap />
-      {vtt?.websocketChannel && <Participants />}
-      {vtt?.websocketChannel && <Subscriber />}
+      {channel && <Participants />}
+      {channel && <Subscriber />}
     </main>
   );
 };

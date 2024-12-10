@@ -1,11 +1,12 @@
 import React, { useEffect } from "react";
 import { usePresence, usePresenceListener, useAbly } from "ably/react";
 import { useVtt } from "@/context/vttContext";
+import { useVttChannel } from "@/context/vttChannelContext";
 
 export const Participants: React.FC = () => {
   const ably = useAbly();
   const { vtt } = useVtt();
-  const channel = vtt?.websocketChannel ?? "";
+  const { channel } = useVttChannel();
   usePresence(channel);
   const { presenceData } = usePresenceListener(channel);
 

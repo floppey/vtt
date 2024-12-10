@@ -9,7 +9,7 @@ export default function App({ Component, pageProps }: AppProps) {
   });
   return (
     <AblyProvider client={client}>
-      <Component {...pageProps} />;
+      <Component {...pageProps} />
     </AblyProvider>
   );
 }

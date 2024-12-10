@@ -9,7 +9,6 @@ import { Coordinates, Size } from "../types/types";
 import { Cell } from "./Cell";
 import { Grid } from "./Grid";
 import Unit from "./Unit";
-import { getQueryParameter } from "@/util/getQueryParameter";
 import { postMoveUnit } from "@/api/postMoveUnit";
 import { BaseClass } from "./BaseClass";
 
@@ -45,10 +44,9 @@ export class VTT extends BaseClass {
   #units: Unit[];
   #selectedUnits: Unit[] = [];
 
-  constructor(canvasId: string, webSocketChannel: string | null) {
+  constructor(canvasId: string, websocketChannel: string) {
     super();
-    this.#websocketChannel =
-      getQueryParameter("invite") || webSocketChannel || generateGuid();
+    this.#websocketChannel = websocketChannel;
     this.#websocketClientId = `unset-${generateGuid()}`;
     this.#canvas = document.getElementById(canvasId) as HTMLCanvasElement;
     this.#ctx = this.#canvas?.getContext("2d") as CanvasRenderingContext2D;
@@ -448,7 +446,7 @@ export class VTT extends BaseClass {
     this.shouldRenderAll = true;
   }
 
-  moveUnit(unit: Unit, to: Cell, broadcast: boolean = false): void {
+  moveUnit(unit: Unit, to: Cell, broadcast = false): void {
     if (!to) {
       console.warn("Destination cell not found");
       return;
