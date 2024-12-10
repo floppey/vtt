@@ -12,6 +12,7 @@ function isCanvasEmpty(canvas: HTMLCanvasElement) {
   // Check if all pixels are transparent (alpha value is 0)
   for (let i = 3; i < pixelData.data.length; i += 4) {
     if (pixelData.data[i] > 0) {
+      isEmpty = false;
       return false; // Canvas has some non-transparent content
     }
   }
