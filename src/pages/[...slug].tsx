@@ -1,9 +1,7 @@
 import { VttWrapper } from "@/components/VttWrapper";
 import { MapSettingsProvider } from "@/context/mapSettingsContext";
 import { VttChannelProvider } from "@/context/vttChannelContext";
-
 import { VttProvider } from "@/context/vttContext";
-import { generateGuid } from "@/util/generateGuid";
 import { NextApiRequest, NextApiResponse } from "next";
 import Head from "next/head";
 
@@ -25,15 +23,18 @@ export async function getStaticProps({
   req: NextApiRequest;
   res: NextApiResponse;
 }) {
-  let channelId = params.slug[0];
+  const channelId = params.slug[0];
   if (!channelId) {
     // create id and redirect
-    channelId = generateGuid();
+    // channelId = generateGuid();
+    // return {
+    //   redirect: {
+    //     destination: `/${channelId}`,
+    //     permanent: false,
+    //   },
+    // }
     return {
-      redirect: {
-        destination: `/${channelId}`,
-        permanent: false,
-      },
+      notFound: true,
     }
   }
 
