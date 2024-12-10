@@ -21,6 +21,6 @@ export const postMoveUnit = async ({
   });
 
   if (!res.ok) {
-    throw new Error("Failed to move unit");
+    console.error("Failed to move unit");
   }
 };
