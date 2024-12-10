@@ -93,6 +93,10 @@ export default class Unit extends BaseClass {
     return this.#vtt;
   }
 
+  set vtt(vtt: VTT) {
+    this.#vtt = vtt;
+  }
+
   get width(): number {
     return this.#vtt.gridSize.width ?? 0;
   }

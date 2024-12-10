@@ -11,6 +11,8 @@ import { Grid } from "./Grid";
 import Unit from "./Unit";
 import { postMoveUnit } from "@/api/postMoveUnit";
 import { BaseClass } from "./BaseClass";
+import { postAddUnit } from "@/api/postAddUnit";
+import { generateRandomName } from "@/util/generateRandomUser";
 
 export class VTT extends BaseClass {
   #websocketChannel: string;
@@ -424,18 +426,18 @@ export class VTT extends BaseClass {
       return;
     }
     this.setCanvasSize();
-    this.#units = [
-      new Unit({
-        vtt: this,
-        maxHealth: 100,
-        name: "Sir Lancelot",
-        type: "unit",
-        gridPosition: {
-          row: Math.floor(Math.random() * (this.grid?.cells?.length ?? 0)),
-          col: Math.floor(Math.random() * (this.grid?.cells?.[0]?.length ?? 0)),
-        },
-      }),
-    ];
+    const newUnit = new Unit({
+      vtt: this,
+      maxHealth: 100,
+      name: generateRandomName(),
+      type: "unit",
+      gridPosition: {
+        row: Math.floor(Math.random() * (this.grid?.cells?.length ?? 0)),
+        col: Math.floor(Math.random() * (this.grid?.cells?.[0]?.length ?? 0)),
+      },
+    });
+    this.#units = [];
+    this.addUnit(newUnit, newUnit.cell ?? this.grid.cells[0][0], true);
     this.selectUnit(this.units[0], false);
     this.centerCanvasOnUnit(this.units[0]);
     this.renderLoop();
@@ -458,6 +460,25 @@ export class VTT extends BaseClass {
     if (this.#selectedUnits.length === 0) return;
     this.#selectedUnits = [];
     this.shouldRenderAll = true;
+  }
+
+  addUnit(unit: Unit, destination: Cell, broadcast = false) {
+    unit.vtt = this;
+    unit.cell = destination;
+    this.#units.push(unit);
+    this.shouldRenderAll = true;
+
+    if (broadcast) {
+      postAddUnit({
+        unit: unit,
+        destination: {
+          row: destination.row,
+          col: destination.col,
+        },
+        channelId: this.websocketChannel,
+        author: this.websocketClientId,
+      });
+    }
   }
 
   moveUnit(unit: Unit, to: Cell, broadcast = false): void {

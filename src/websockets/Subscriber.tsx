@@ -5,10 +5,15 @@ import { GridPosition } from "@/vtt/types/types";
 import { Message } from "ably";
 import { useChannel } from "ably/react";
 
-export interface BaseMessageData {
+interface BaseMessageData {
   author: string;
 }
-export interface MoveUnitMessageData extends BaseMessageData {
+interface MoveUnitMessageData extends BaseMessageData {
+  unit: CreateUnitProps;
+  destination: GridPosition;
+}
+
+interface AddUnitMessageData extends BaseMessageData {
   unit: CreateUnitProps;
   destination: GridPosition;
 }
@@ -17,6 +22,7 @@ type MyMessages = Omit<Message, "message" | "data"> &
   (
     | { name: "base"; data: BaseMessageData }
     | { name: "moveUnit"; data: MoveUnitMessageData }
+    | { name: "addUnit"; data: AddUnitMessageData }
   );
 
 export const Subscriber: React.FC = () => {
@@ -32,9 +38,7 @@ export const Subscriber: React.FC = () => {
       const { unit: createUnitProps, destination } = myMessage.data;
       const unit = createUnit(createUnitProps);
 
-      const unitToMove = vtt?.units.find(
-        (u) => u.id === unit.id || unit.name === u.name
-      );
+      const unitToMove = vtt?.units.find((u) => u.id === unit.id);
       if (!unitToMove) {
         console.error("Unit not found");
         return;
@@ -48,6 +52,21 @@ export const Subscriber: React.FC = () => {
       }
 
       vtt?.moveUnit(unitToMove, toCell);
+      return;
+    }
+    if (myMessage.name === "addUnit") {
+      const { unit: createUnitProps, destination } = myMessage.data;
+      const unit = createUnit(createUnitProps);
+
+      const toCell = vtt?.grid?.cells?.[destination.row]?.[destination.col];
+
+      if (!toCell) {
+        console.error("Destination cell not found");
+        return;
+      }
+
+      vtt.addUnit(unit, toCell, false);
+      return;
     }
   });
 
