@@ -9,7 +9,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         {/* Layout UI */}
-        <main>{children}</main>
+        {children}
       </body>
     </html>
   );
