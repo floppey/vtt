@@ -11,7 +11,7 @@ export default async function Page(props: Props) {
 
   return (
     <ProviderOfAllThings channelId={channelId}>
-      <VttWrapper />
+      <VttWrapper channel={channelId} />
     </ProviderOfAllThings>
   );
 }

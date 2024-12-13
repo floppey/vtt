@@ -468,7 +468,7 @@ export class VTT extends BaseClass {
     this.#units.push(unit);
     this.shouldRenderAll = true;
 
-    if (broadcast) {
+    if (broadcast && this.websocketChannel) {
       postAddUnit({
         unit: unit,
         destination: {
@@ -490,7 +490,7 @@ export class VTT extends BaseClass {
     unit.cell = to;
     this.shouldRenderAll = true;
 
-    if (broadcast) {
+    if (broadcast && this.websocketChannel) {
       postMoveUnit({
         unit: unit,
         destination: {

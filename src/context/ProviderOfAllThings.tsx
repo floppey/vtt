@@ -3,13 +3,20 @@ import * as Ably from "ably";
 import { AblyProvider } from "ably/react";
 import { MapSettingsProvider } from "./mapSettingsContext";
 import { VttProvider } from "./vttContext";
-import { VttChannelProvider } from "./vttChannelContext";
-import { useState } from "react";
+import { useVttChannel, VttChannelProvider } from "./vttChannelContext";
+import { ReactNode, useState } from "react";
 
 interface ProviderOfAllThingsProps {
   children: React.ReactNode;
   channelId: string;
 }
+
+const VttProviderWrapper: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
+  const { channel } = useVttChannel();
+  return <VttProvider channel={channel}>{children}</VttProvider>;
+};
 
 const ProviderOfAllThings: React.FC<ProviderOfAllThingsProps> = ({
   children,
@@ -23,9 +30,9 @@ const ProviderOfAllThings: React.FC<ProviderOfAllThingsProps> = ({
   return (
     <AblyProvider client={client}>
       <VttChannelProvider channel={channelId}>
-        <VttProvider>
+        <VttProviderWrapper>
           <MapSettingsProvider>{children}</MapSettingsProvider>
-        </VttProvider>
+        </VttProviderWrapper>
       </VttChannelProvider>
     </AblyProvider>
   );

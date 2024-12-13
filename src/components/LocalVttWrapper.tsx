@@ -3,14 +3,8 @@ import { useMapSettings } from "@/context/mapSettingsContext";
 import { useVtt } from "@/context/vttContext";
 import { useEffect, useRef } from "react";
 import { ConfigureMap } from "./ConfigureMap";
-import { Participants } from "./Participants";
-import { Subscriber } from "@/websockets/Subscriber";
 
-interface VttWrapperProps {
-  channel: string;
-}
-
-export const VttWrapper: React.FC<VttWrapperProps> = ({ channel }) => {
+export const LocalVttWrapper: React.FC = () => {
   const { mapSettings } = useMapSettings();
   const { vtt } = useVtt();
 
@@ -54,8 +48,6 @@ export const VttWrapper: React.FC<VttWrapperProps> = ({ channel }) => {
       <canvas ref={canvasRef} id="canvas" width="800" height="600"></canvas>
 
       <ConfigureMap />
-      {channel && <Participants />}
-      {channel && <Subscriber />}
     </main>
   );
 };
