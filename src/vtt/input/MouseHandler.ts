@@ -68,9 +68,13 @@ export class MouseHandler {
     });
   }
 
+  clearMoveUnitStartCoordinates() {
+    this.#moveUnitStartCoordinates = null;
+  }
+
   private click(_event: MouseEvent) {}
 
-  mouseMove(event: MouseEvent) {
+  private mouseMove(event: MouseEvent) {
     this.#vtt.mousePosition = { x: event.clientX, y: event.clientY };
     if (this.#panMovementStartCoordinates) {
       const mouseDragX =
@@ -130,11 +134,11 @@ export class MouseHandler {
     }
   }
 
-  contextMenu(event: MouseEvent) {
+  private contextMenu(event: MouseEvent) {
     event.preventDefault();
   }
 
-  mouseDown(event: MouseEvent) {
+  private mouseDown(event: MouseEvent) {
     // if right mouse button is clicked
     if (event.button === 2 && !this.#panMovementStartCoordinates) {
       this.#panMovementStartCoordinates = { ...this.#vtt.mousePosition };
@@ -161,7 +165,7 @@ export class MouseHandler {
     }
   }
 
-  mouseUp() {
+  private mouseUp() {
     this.#panMovementStartCoordinates = null;
     const zoom = 1;
     if (this.#vtt.tempPosition) {

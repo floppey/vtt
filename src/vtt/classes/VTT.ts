@@ -443,6 +443,9 @@ export class VTT extends BaseClass {
 
   deselectUnit(unit: Unit) {
     this.#selectedUnits = this.#selectedUnits.filter((u) => u.id !== unit.id);
+    if (this.#selectedUnits.length === 0) {
+      this.#mouseHandler.clearMoveUnitStartCoordinates();
+    }
     this.render("foreground");
   }
 

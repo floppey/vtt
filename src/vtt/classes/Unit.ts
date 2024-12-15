@@ -132,6 +132,19 @@ export default class Unit extends BaseClass {
     this.#tempPositions.push(position);
   }
 
+  /**
+   * Removes the last temporary position from the list of temporary positions
+   * @returns true if a position was removed, false if there are no positions to remove
+   */
+  removeTempPosotion(): boolean {
+    if (this.#tempPositions.length === 0) {
+      this.tempPosition = null;
+      return false;
+    }
+    this.#tempPositions.pop();
+    return true;
+  }
+
   click(): void {
     this.vtt.render("foreground");
   }
@@ -296,23 +309,12 @@ export default class Unit extends BaseClass {
 
     const { x, y } = position;
 
-    console.log(
-      "Drawing unit",
-      this.#name,
-      x,
-      y,
-      this.cell?.row,
-      this.cell?.col,
-      position
-    );
-
     if (!position) {
       return;
     }
 
     ctx.fillStyle = "green";
     ctx.fillRect(x, y, width, height);
-    console.log("Drawing unit", this.#name, x, y, width, height);
     ctx.font = "12px Arial";
     ctx.fillStyle = "black";
     ctx.textAlign = "center";

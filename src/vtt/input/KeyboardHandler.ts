@@ -53,7 +53,13 @@ export class KeyboardHandler {
       // Escape
       case "Escape":
         e.preventDefault();
-        this.#vtt.deselectAllUnits();
+        if (this.#vtt.selectedUnits.length > 0) {
+          this.#vtt.selectedUnits.forEach(
+            (unit) => unit.removeTempPosotion() || this.#vtt.deselectUnit(unit)
+          );
+        }
+
+        this.#vtt.render("foreground");
         break;
     }
   };
