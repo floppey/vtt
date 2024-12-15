@@ -3,29 +3,14 @@ import { useMapSettings } from "@/context/mapSettingsContext";
 import { useVtt } from "@/context/vttContext";
 import { useEffect, useRef } from "react";
 import { ConfigureMap } from "./ConfigureMap";
+import ConfigureUser from "./ConfigureUser";
 
 export const LocalVttWrapper: React.FC = () => {
   const { mapSettings } = useMapSettings();
-  const { vtt, initVtt } = useVtt();
+  const { vtt } = useVtt();
 
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const foregroundCanvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (
-      backgroundCanvasRef.current &&
-      foregroundCanvasRef.current &&
-      !vtt?.initialized
-    ) {
-      initVtt(backgroundCanvasRef.current.id, foregroundCanvasRef.current.id);
-    }
-
-    return () => {
-      if (vtt) {
-        vtt.destroy();
-      }
-    };
-  }, [initVtt, vtt]);
 
   useEffect(() => {
     if (vtt) {
@@ -63,6 +48,7 @@ export const LocalVttWrapper: React.FC = () => {
           height="600"
         ></canvas>
       </div>
+      <ConfigureUser />
       <ConfigureMap />
     </main>
   );

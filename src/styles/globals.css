@@ -1,5 +1,6 @@
 :root {
   --background: #ffffff;
+  --background-alt: #f9f9f9;
   --foreground: #171717;
   --forground-active: #0078d4;
 }
@@ -7,6 +8,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #282c34;
+    --background-alt: #1e2127;
     --foreground: #ededed;
     --forground-active: #0078d4;
   }
@@ -27,6 +29,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+main {
+  min-height: 100vh;
+  min-width: 100vw;
+}
+
 * {
   box-sizing: border-box;
   padding: 0;
@@ -45,17 +52,18 @@ a {
 }
 
 .window {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
   display: flex;
   flex-direction: column;
-  background-color: var(--background);
+  background-color: var(--background-alt);
   color: var(--foreground);
   padding: 1rem;
-}
 
-#map-settings {
-  position: absolute;
-  top: 0;
-  left: 0;
+  border: 1px solid var(--foreground);
 }
 
 #participants {
@@ -91,4 +99,18 @@ canvas {
     top: 0;
     left: 0;
   }
+}
+
+input,
+button {
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+  display: block;
+  border: 1px solid var(--foreground);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+button {
+  cursor: pointer;
 }

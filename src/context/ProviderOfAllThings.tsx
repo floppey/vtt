@@ -5,6 +5,7 @@ import { MapSettingsProvider } from "./mapSettingsContext";
 import { VttProvider } from "./vttContext";
 import { useVttChannel, VttChannelProvider } from "./vttChannelContext";
 import { ReactNode, useState } from "react";
+import { UserProvider } from "./userContext";
 
 interface ProviderOfAllThingsProps {
   children: React.ReactNode;
@@ -30,9 +31,11 @@ const ProviderOfAllThings: React.FC<ProviderOfAllThingsProps> = ({
   return (
     <AblyProvider client={client}>
       <VttChannelProvider channel={channelId}>
-        <VttProviderWrapper>
-          <MapSettingsProvider>{children}</MapSettingsProvider>
-        </VttProviderWrapper>
+        <UserProvider>
+          <VttProviderWrapper>
+            <MapSettingsProvider>{children}</MapSettingsProvider>
+          </VttProviderWrapper>
+        </UserProvider>
       </VttChannelProvider>
     </AblyProvider>
   );

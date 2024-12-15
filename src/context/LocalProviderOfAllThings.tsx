@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { MapSettingsProvider } from "./mapSettingsContext";
 import { VttProvider } from "./vttContext";
+import { UserProvider } from "./userContext";
 
 interface LocalProviderOfAllThingsProps {
   children: React.ReactNode;
@@ -21,9 +22,11 @@ const LocalProviderOfAllThings: React.FC<LocalProviderOfAllThingsProps> = ({
   }
 
   return (
-    <VttProvider channel={channel}>
-      <MapSettingsProvider>{children}</MapSettingsProvider>
-    </VttProvider>
+    <UserProvider>
+      <VttProvider channel={channel}>
+        <MapSettingsProvider>{children}</MapSettingsProvider>
+      </VttProvider>
+    </UserProvider>
   );
 };
 
