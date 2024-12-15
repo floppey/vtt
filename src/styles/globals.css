@@ -64,7 +64,6 @@ a {
   left: 0;
 }
 
-
 #new-game {
   display: flex;
   flex-direction: column;
@@ -78,4 +77,18 @@ a {
   font-size: 3rem;
   cursor: pointer;
   color: var(--forground-active);
+}
+
+canvas {
+  background: transparent;
+}
+
+#hud {
+  position: absolute;
+
+  canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
 }

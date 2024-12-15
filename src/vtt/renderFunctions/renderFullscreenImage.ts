@@ -1,14 +1,16 @@
-import { VTT } from "../classes/VTT";
+import { CanvasKey, VTT } from "../classes/VTT";
 import { Size } from "../types/types";
 
 export const renderFullscreenImage = (
   vtt: VTT,
+  canvasId: CanvasKey,
   source: HTMLImageElement | HTMLCanvasElement
 ): void => {
-  const { offScreenCtx, offScreenCanvas } = vtt;
+  const canvas = vtt.canvas[canvasId];
+  const ctx = vtt.ctx[canvasId];
   const viewportSize: Size = {
-    width: offScreenCanvas.width,
-    height: offScreenCanvas.height,
+    width: canvas.width,
+    height: canvas.height,
   };
 
   const width =
@@ -32,5 +34,5 @@ export const renderFullscreenImage = (
   const dw = viewportSize.width;
   const dh = viewportSize.height;
 
-  offScreenCtx.drawImage(source, sx, sy, sw, sh, dx, dy, dw, dh);
+  ctx.drawImage(source, sx, sy, sw, sh, dx, dy, dw, dh);
 };

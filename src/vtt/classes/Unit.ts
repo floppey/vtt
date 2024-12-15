@@ -133,19 +133,18 @@ export default class Unit extends BaseClass {
   }
 
   click(): void {
-    this.#vtt.shouldRenderAll = true;
+    this.vtt.render("foreground");
   }
 
   draw() {
-    const { offScreenCtx } = this.#vtt;
-
-    this.drawUnit(offScreenCtx);
+    const ctx = this.#vtt.ctx.foreground;
+    this.drawUnit(ctx);
 
     if (this.tempPosition) {
-      offScreenCtx.save();
-      offScreenCtx.globalAlpha = 0.75;
-      this.drawUnit(offScreenCtx, this.tempPosition);
-      offScreenCtx.restore();
+      ctx.save();
+      ctx.globalAlpha = 0.75;
+      this.drawUnit(ctx, this.tempPosition);
+      ctx.restore();
 
       // draw a line from the original position to the new position, with a circle at each end
       this.drawPath();
@@ -156,20 +155,20 @@ export default class Unit extends BaseClass {
     if (!this.tempPosition) {
       return;
     }
-    const { offScreenCtx } = this.#vtt;
+    const ctx = this.#vtt.ctx.foreground;
     const positions = this.getTempPositions();
 
     let numberOfDiagonalMoves = 0;
     let totalDistance = 0;
-    offScreenCtx.save();
+    ctx.save();
     positions.forEach((position, index) => {
       if (!position) {
         return;
       }
-      offScreenCtx.beginPath();
-      offScreenCtx.strokeStyle = "rgba(255,255,255,0.75)";
-      offScreenCtx.fillStyle = "rgba(0,0,255,0.5)";
-      offScreenCtx.lineWidth = Math.min(this.width, this.height) / 5;
+      ctx.beginPath();
+      ctx.strokeStyle = "rgba(255,255,255,0.75)";
+      ctx.fillStyle = "rgba(0,0,255,0.5)";
+      ctx.lineWidth = Math.min(this.width, this.height) / 5;
       const oldPosition = positions[index - 1];
 
       const center = {
@@ -181,19 +180,19 @@ export default class Unit extends BaseClass {
           x: oldPosition.x + this.width / 2,
           y: oldPosition.y + this.height / 2,
         };
-        offScreenCtx.moveTo(oldCenter.x, oldCenter.y);
+        ctx.moveTo(oldCenter.x, oldCenter.y);
 
-        offScreenCtx.lineTo(center.x, center.y);
-        offScreenCtx.stroke();
-        offScreenCtx.beginPath();
-        offScreenCtx.arc(
+        ctx.lineTo(center.x, center.y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(
           oldCenter.x,
           oldCenter.y,
           Math.min(this.width, this.height) / 5,
           0,
           Math.PI * 2
         );
-        offScreenCtx.fill();
+        ctx.fill();
 
         // Draw distance text at the center of the line
         const { numberOfFeet, diagonalMoves } = get5eDistance(
@@ -213,68 +212,68 @@ export default class Unit extends BaseClass {
           center.y - oldCenter.y,
           center.x - oldCenter.x
         );
-        // offScreenCtx.moveTo(
+        // ctx.moveTo(
         //   (center.x + oldCenter.x) / 2,
         //   (center.y + oldCenter.y) / 2
         // );
-        // offScreenCtx.save();
-        // offScreenCtx.rotate(angle);
+        // ctx.save();
+        // ctx.rotate(angle);
 
-        // offScreenCtx.fillStyle = "black";
-        // offScreenCtx.font = "24px Arial";
-        // offScreenCtx.textAlign = "center";
-        // offScreenCtx.fillText(
+        // ctx.fillStyle = "black";
+        // ctx.font = "24px Arial";
+        // ctx.textAlign = "center";
+        // ctx.fillText(
         //   `${distance} ft`,
         //   (center.x + oldCenter.x) / 2,
         //   (center.y + oldCenter.y) / 2
         // );
-        // offScreenCtx.restore();
+        // ctx.restore();
 
         // Save the current canvas state
-        offScreenCtx.save();
+        ctx.save();
 
         // Translate to midpoint and rotate
-        offScreenCtx.translate(midX, midY);
-        offScreenCtx.rotate(angle);
+        ctx.translate(midX, midY);
+        ctx.rotate(angle);
 
         // Adjust rotation to keep text upright
         if (Math.abs(angle) > Math.PI / 2 || Math.abs(angle) < -Math.PI / 2) {
-          offScreenCtx.rotate(Math.PI);
+          ctx.rotate(Math.PI);
         }
 
         // Draw distance text
-        offScreenCtx.fillStyle = "black";
-        offScreenCtx.font = "24px Arial";
-        offScreenCtx.textAlign = "center";
-        offScreenCtx.textBaseline = "middle";
-        offScreenCtx.fillText(`${numberOfFeet} ft`, 0, 0);
+        ctx.fillStyle = "black";
+        ctx.font = "24px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(`${numberOfFeet} ft`, 0, 0);
 
         // Restore canvas state
-        offScreenCtx.restore();
+        ctx.restore();
       }
-      offScreenCtx.beginPath();
-      offScreenCtx.arc(
+      ctx.beginPath();
+      ctx.arc(
         center.x,
         center.y,
         Math.min(this.width, this.height) / 5,
         0,
         Math.PI * 2
       );
-      offScreenCtx.fill();
+      ctx.fill();
 
       // Draw the total distance at the end of the path
       if (index === positions.length - 1) {
-        offScreenCtx.fillStyle = "black";
-        offScreenCtx.font = "36px Arial";
-        offScreenCtx.textAlign = "center";
-        offScreenCtx.fillText(
+        ctx.fillStyle = "black";
+        ctx.font = "36px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(
           `${totalDistance} ft`,
           center.x,
           center.y - this.height / 3
         );
       }
     });
-    offScreenCtx.restore();
+    ctx.restore();
   }
 
   get isSelected(): boolean {
@@ -294,7 +293,18 @@ export default class Unit extends BaseClass {
         y: (this.cell?.row ?? 0) * height,
       };
     }
+
     const { x, y } = position;
+
+    console.log(
+      "Drawing unit",
+      this.#name,
+      x,
+      y,
+      this.cell?.row,
+      this.cell?.col,
+      position
+    );
 
     if (!position) {
       return;
@@ -302,6 +312,7 @@ export default class Unit extends BaseClass {
 
     ctx.fillStyle = "green";
     ctx.fillRect(x, y, width, height);
+    console.log("Drawing unit", this.#name, x, y, width, height);
     ctx.font = "12px Arial";
     ctx.fillStyle = "black";
     ctx.textAlign = "center";

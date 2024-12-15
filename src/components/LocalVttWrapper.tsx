@@ -6,14 +6,18 @@ import { ConfigureMap } from "./ConfigureMap";
 
 export const LocalVttWrapper: React.FC = () => {
   const { mapSettings } = useMapSettings();
-  const { vtt } = useVtt();
+  const { vtt, initVtt } = useVtt();
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
+  const foregroundCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (canvasRef.current && vtt) {
-      vtt.canvas = canvasRef.current;
-      vtt.init();
+    if (
+      backgroundCanvasRef.current &&
+      foregroundCanvasRef.current &&
+      !vtt?.initialized
+    ) {
+      initVtt(backgroundCanvasRef.current.id, foregroundCanvasRef.current.id);
     }
 
     return () => {
@@ -21,7 +25,7 @@ export const LocalVttWrapper: React.FC = () => {
         vtt.destroy();
       }
     };
-  }, [vtt]);
+  }, [initVtt, vtt]);
 
   useEffect(() => {
     if (vtt) {
@@ -45,8 +49,20 @@ export const LocalVttWrapper: React.FC = () => {
 
   return (
     <main>
-      <canvas ref={canvasRef} id="canvas" width="800" height="600"></canvas>
-
+      <div id="hud">
+        <canvas
+          ref={backgroundCanvasRef}
+          id="background"
+          width="800"
+          height="600"
+        ></canvas>
+        <canvas
+          ref={foregroundCanvasRef}
+          id="foreground"
+          width="800"
+          height="600"
+        ></canvas>
+      </div>
       <ConfigureMap />
     </main>
   );

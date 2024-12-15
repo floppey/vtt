@@ -41,39 +41,31 @@ export class Cell extends BaseClass {
   }
 
   onClick(): void {
+    console.log("Cell clicked", this.#row, this.#col);
     if (this.vtt.isDebug) {
       this.#isSelected = !this.#isSelected;
-      this.#vtt.shouldRenderAll = true;
+      this.vtt.render("background");
     }
   }
 
   draw(): void {
-    const { offScreenCtx, gridSize, gridColor } = this.#vtt;
+    const { gridSize, gridColor } = this.#vtt;
+    const ctx = this.#vtt.ctx.background;
     const width = gridSize.width;
     const height = gridSize.height;
-    offScreenCtx.strokeStyle = gridColor;
-    offScreenCtx.strokeRect(
-      this.#col * height,
-      this.#row * width,
-      width,
-      height
-    );
+    ctx.strokeStyle = gridColor;
+    ctx.strokeRect(this.#col * height, this.#row * width, width, height);
 
     if (this.#isSelected) {
-      offScreenCtx.fillStyle = "rgba(0, 0, 255, 0.5)";
-      offScreenCtx.fillRect(
-        this.#col * height,
-        this.#row * width,
-        width,
-        height
-      );
+      ctx.fillStyle = "rgba(0, 0, 255, 0.5)";
+      ctx.fillRect(this.#col * height, this.#row * width, width, height);
     }
 
     if (this.vtt.isDebug) {
-      offScreenCtx.fillStyle = "orange";
-      offScreenCtx.font = "24px Arial";
-      offScreenCtx.textAlign = "center";
-      offScreenCtx.fillText(
+      ctx.fillStyle = "orange";
+      ctx.font = "24px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(
         `${this.#row}, ${this.#col}`,
         this.#col * height + height / 2,
         this.#row * width + width / 2

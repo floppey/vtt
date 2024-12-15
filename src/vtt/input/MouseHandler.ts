@@ -1,7 +1,6 @@
 import { MouseEvent } from "react";
 import { VTT } from "../classes/VTT";
 import { Coordinates } from "../types/types";
-import { Cell } from "../classes/Cell";
 
 type MouseEventListener = (e: MouseEvent) => void;
 type ScrollEventListener = (e: WheelEvent) => void;
@@ -31,7 +30,7 @@ export class MouseHandler {
     this.#vtt = vtt;
     this.#panMovementStartCoordinates = null;
     this.#moveUnitStartCoordinates = null;
-    if (this.#vtt.canvas) {
+    if (this.#vtt.canvas.background) {
       this.#eventListeners = {
         mousemove: this.mouseMove.bind(this),
         wheel: this.onScroll.bind(this),
@@ -50,7 +49,8 @@ export class MouseHandler {
     this.#destroyed = true;
     Object.keys(this.#eventListeners).forEach((key) => {
       /* @ts-ignore */
-      this.#vtt.canvas.removeEventListener(key, this.#eventListeners[key]);
+      // this.#vtt.canvas.removeEventListener(key, this.#eventListeners[key]);
+      document.body.removeEventListener(key, this.#eventListeners[key]);
     });
   }
 
@@ -64,7 +64,7 @@ export class MouseHandler {
     window.mousehandlers.push(this);
     Object.keys(this.#eventListeners).forEach((key) => {
       /* @ts-ignore */
-      this.#vtt.canvas.addEventListener(key, this.#eventListeners[key]);
+      document.body.addEventListener(key, this.#eventListeners[key]);
     });
   }
 
@@ -73,25 +73,19 @@ export class MouseHandler {
   mouseMove(event: MouseEvent) {
     this.#vtt.mousePosition = { x: event.clientX, y: event.clientY };
     if (this.#panMovementStartCoordinates) {
-      // set temp position within image. Allow going 1/4 of the image size outside of the image
       const mouseDragX =
         this.#vtt.mousePosition.x - this.#panMovementStartCoordinates.x;
       const mouseDragY =
         this.#vtt.mousePosition.y - this.#panMovementStartCoordinates.y;
 
-      const zoomedDragX = mouseDragX / this.#vtt.zoom;
-      const zoomedDragY = mouseDragY / this.#vtt.zoom;
+      const tempPositionX = this.#vtt.position.x + mouseDragX;
+      const tempPositionY = this.#vtt.position.y + mouseDragY;
 
-      const tempPositionX = this.#vtt.position.x + zoomedDragX;
-      const tempPositionY = this.#vtt.position.y + zoomedDragY;
+      const maxPositionX = this.#vtt.backgroundImageSize.width * 1.25;
+      const minPositionX = -this.#vtt.backgroundImageSize.width * 1.25;
 
-      const maxPositionX = this.#vtt.backgroundImageSize.width / 4;
-      const minPositionX =
-        -this.#vtt.backgroundImageSize.width + this.#vtt.windowSize.width / 2;
-
-      const maxPositionY = this.#vtt.windowSize.height / 4;
-      const minPositionY =
-        -this.#vtt.backgroundImageSize.height + this.#vtt.windowSize.height / 2;
+      const maxPositionY = this.#vtt.backgroundImageSize.height * 1.25;
+      const minPositionY = -this.#vtt.backgroundImageSize.height * 1.25;
 
       const boundedX = Math.max(
         minPositionX,
@@ -109,7 +103,7 @@ export class MouseHandler {
     }
     if (this.#moveUnitStartCoordinates) {
       const unit = this.#vtt.selectedUnits[0];
-      const zoom = this.#vtt.zoom;
+      const zoom = 1;
       if (unit) {
         const unitSize = Math.min(unit.width, unit.height) * zoom;
         if (
@@ -131,7 +125,7 @@ export class MouseHandler {
               unit.height / 2,
           };
         }
-        this.#vtt.shouldRenderAll = true;
+        this.#vtt.render("foreground");
       }
     }
   }
@@ -169,7 +163,7 @@ export class MouseHandler {
 
   mouseUp() {
     this.#panMovementStartCoordinates = null;
-
+    const zoom = 1;
     if (this.#vtt.tempPosition) {
       this.#vtt.position = { ...this.#vtt.tempPosition };
       this.#vtt.tempPosition = null;
@@ -191,8 +185,8 @@ export class MouseHandler {
       // If control key is pressed, do not move the unit
       if (this.#vtt.pressedKeys[17]) {
         unit.addTempPosition({
-          x: toCell.getX() / this.#vtt.zoom,
-          y: toCell.getY() / this.#vtt.zoom,
+          x: toCell.getX() / zoom,
+          y: toCell.getY() / zoom,
         });
         return;
       }
@@ -223,40 +217,42 @@ export class MouseHandler {
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
+  private getCanvasCoordinates(coordinates: Coordinates) {
+    // Zoom is applied to the center of the canvas, so we need to adjust the coordinates based on the actual position of the canvas and not the position inn this.#vtt.position
+    const rect = this.#vtt.canvas.background.getBoundingClientRect();
+
+    const canvasX = (coordinates.x - rect.left) / this.#vtt.zoom;
+    const canvasY = (coordinates.y - rect.top) / this.#vtt.zoom;
+
+    return { x: canvasX, y: canvasY };
+  }
+
   private getCellAtMousePosition() {
     return this.getCellAtCoordinates(this.#vtt.mousePosition);
   }
 
   private getCellAtCoordinates(coordinates: Coordinates) {
-    const cellHeight = this.#vtt.gridSize.height * this.#vtt.zoom;
-    const cellWidth = this.#vtt.gridSize.width * this.#vtt.zoom;
+    const cellWidth = this.#vtt.gridSize.width;
+    const cellHeight = this.#vtt.gridSize.height;
 
-    const vttPosition = this.#vtt.getPosition();
+    const canvasCoordinates = this.getCanvasCoordinates(coordinates);
 
-    const xCoordinate = coordinates.x - vttPosition.x * this.#vtt.zoom;
-    const yCoordinate = coordinates.y - vttPosition.y * this.#vtt.zoom;
-
-    let cell: Cell | undefined;
-    for (let x = 0; x < this.#vtt.grid.cells.length && !cell; x++) {
-      const testCellX = this.#vtt.grid.cells[x][0];
-      // Skip checking y values if the x value is outside of the cell
-      if (
-        yCoordinate < testCellX.getY() ||
-        yCoordinate > testCellX.getY() + cellHeight
-      ) {
-        continue;
-      }
-
-      for (let y = 0; y < this.#vtt.grid.cells[x].length && !cell; y++) {
-        const testCellY = this.#vtt.grid.cells[x][y];
-        if (
-          xCoordinate > testCellY.getX() &&
-          xCoordinate < testCellY.getX() + cellWidth
-        ) {
-          cell = testCellY;
-        }
-      }
+    if (
+      canvasCoordinates.x < 0 ||
+      canvasCoordinates.x >= this.#vtt.canvas.background.width ||
+      canvasCoordinates.y < 0 ||
+      canvasCoordinates.y >= this.#vtt.canvas.background.height
+    ) {
+      return null;
     }
-    return cell;
+
+    const col = Math.floor(canvasCoordinates.x / cellWidth);
+    const row = Math.floor(canvasCoordinates.y / cellHeight);
+
+    if (!this.#vtt.grid.cells[row] || !this.#vtt.grid.cells[row][col]) {
+      return null;
+    }
+
+    return this.#vtt.grid.cells[row][col];
   }
 }

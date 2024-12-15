@@ -4,8 +4,8 @@ import { renderFullscreenImage } from "./renderFullscreenImage";
 export const renderUnitVision = (vtt: VTT) => {
   // Create a temporary canvas for the fog
   const fogCanvas = document.createElement("canvas");
-  const mapWidth = vtt.offScreenCanvas.width;
-  const mapHeight = vtt.offScreenCanvas.height;
+  const mapWidth = vtt.canvas.background.width;
+  const mapHeight = vtt.canvas.background.height;
   fogCanvas.width = mapWidth;
   fogCanvas.height = mapHeight;
   const fogCtx = fogCanvas.getContext("2d");
@@ -54,5 +54,5 @@ export const renderUnitVision = (vtt: VTT) => {
   });
 
   // Draw the fog overlay
-  renderFullscreenImage(vtt, fogCanvas);
+  renderFullscreenImage(vtt, "background", fogCanvas);
 };

@@ -3,7 +3,6 @@ import { KeyboardHandler } from "../input/KeyboardHandler";
 import { MouseHandler } from "../input/MouseHandler";
 import { renderFogOfWar } from "../renderFunctions/renderFogOfWar";
 import { renderFullscreenImage } from "../renderFunctions/renderFullscreenImage";
-import { renderOffScreenCanvas } from "../renderFunctions/renderOffScreenCanvas";
 import { renderUnitVision } from "../renderFunctions/renderUnitVision";
 import { Coordinates, Size } from "../types/types";
 import { Cell } from "./Cell";
@@ -14,13 +13,21 @@ import { BaseClass } from "./BaseClass";
 import { postAddUnit } from "@/api/postAddUnit";
 import { generateRandomName } from "@/util/generateRandomUser";
 
+interface VTTProps {
+  backgroundCanvasId: string;
+  foregroundCanvasId: string;
+  websocketChannel: string;
+}
+
+export type CanvasKey = "background" | "foreground";
+
 export class VTT extends BaseClass {
   #websocketChannel: string;
   #websocketClientId: string;
-  #canvas: HTMLCanvasElement;
-  #ctx: CanvasRenderingContext2D;
-  #offScreenCanvas: HTMLCanvasElement;
-  #offScreenCtx: CanvasRenderingContext2D;
+  #canvas: Record<CanvasKey, HTMLCanvasElement>;
+  #ctx: Record<CanvasKey, CanvasRenderingContext2D>;
+  #renderConditions: Record<CanvasKey, boolean>;
+  #hud: HTMLDivElement;
   #gridSize: Size;
   #zoom: number;
   #windowSize: Size;
@@ -29,13 +36,8 @@ export class VTT extends BaseClass {
   #isDebug: boolean;
   #mouseHandler: MouseHandler;
   #keyboardHandler: KeyboardHandler;
-  #renderConditions: {
-    background: boolean;
-    foreground: boolean;
-  };
   #backgroundImage: HTMLImageElement | null;
   #backgroundImageSize: Size;
-  #backgroundImageSizeNatural: Size;
   #position: Coordinates;
   #tempPosition: Coordinates | null;
   #mousePosition: Coordinates;
@@ -46,17 +48,34 @@ export class VTT extends BaseClass {
   #units: Unit[];
   #selectedUnits: Unit[] = [];
 
-  constructor(canvasId: string, websocketChannel: string) {
+  initialized = false;
+
+  constructor({
+    backgroundCanvasId,
+    foregroundCanvasId,
+    websocketChannel,
+  }: VTTProps) {
     super();
     this.#websocketChannel = websocketChannel;
     this.#websocketClientId = `unset-${generateGuid()}`;
-    this.#canvas = document.getElementById(canvasId) as HTMLCanvasElement;
-    this.#ctx = this.#canvas?.getContext("2d") as CanvasRenderingContext2D;
-    this.#isDebug = false;
-    this.#offScreenCanvas = document.createElement("canvas");
-    this.#offScreenCtx = this.#offScreenCanvas?.getContext(
-      "2d"
-    ) as CanvasRenderingContext2D;
+    this.#hud = document.getElementById("hud") as HTMLDivElement;
+    this.#canvas = {
+      background: document.getElementById(
+        backgroundCanvasId
+      ) as HTMLCanvasElement,
+      foreground: document.getElementById(
+        foregroundCanvasId
+      ) as HTMLCanvasElement,
+    };
+    this.#ctx = {
+      background: this.#canvas.background.getContext(
+        "2d"
+      ) as CanvasRenderingContext2D,
+      foreground: this.#canvas.foreground.getContext(
+        "2d"
+      ) as CanvasRenderingContext2D,
+    };
+    this.#isDebug = true;
     this.#gridSize = { width: 50, height: 50 };
     this.#gridColor = "#989898";
     this.#gridXOffset = 0;
@@ -75,7 +94,6 @@ export class VTT extends BaseClass {
     this.#loading = true;
     this.#backgroundImage = new Image();
     this.#backgroundImageSize = { width: 0, height: 0 };
-    this.#backgroundImageSizeNatural = { width: 0, height: 0 };
     this.#backgroundImage.onload = () => this.onImageLoad();
     this.#mouseHandler = new MouseHandler(this);
     this.#keyboardHandler = new KeyboardHandler(this);
@@ -114,10 +132,6 @@ export class VTT extends BaseClass {
     return this.#canvas;
   }
 
-  get offScreenCanvas() {
-    return this.#offScreenCanvas;
-  }
-
   get grid() {
     return this.#grid;
   }
@@ -140,10 +154,6 @@ export class VTT extends BaseClass {
 
   get ctx() {
     return this.#ctx;
-  }
-
-  get offScreenCtx() {
-    return this.#offScreenCtx;
   }
 
   get gridSize() {
@@ -191,50 +201,23 @@ export class VTT extends BaseClass {
    * Setters
    */
 
-  set canvas(canvas: HTMLCanvasElement) {
-    this.#canvas = canvas;
-    this.#ctx = this.#canvas.getContext("2d") as CanvasRenderingContext2D;
-    this.#mouseHandler.destroy();
-    this.#mouseHandler = new MouseHandler(this);
-    this.#mouseHandler.init();
-    this.#keyboardHandler.destroy();
-    this.#keyboardHandler = new KeyboardHandler(this);
-    this.#keyboardHandler.init();
-    this.setCanvasSize();
-    this.shouldRenderAll = true;
-  }
-
-  set shouldRenderBackground(render: boolean) {
-    this.#renderConditions.background = render;
-  }
-
-  set shouldRenderForeground(render: boolean) {
-    this.#renderConditions.foreground = render;
-  }
-
-  set shouldRenderAll(render: boolean) {
-    this.shouldRenderBackground = render;
-    this.shouldRenderForeground = render;
-  }
-
   set gridXOffset(offset: number) {
     this.#gridXOffset = offset;
-    this.shouldRenderAll = true;
+    this.render("background");
   }
 
   set gridYOffset(offset: number) {
     this.#gridYOffset = offset;
-    this.shouldRenderAll = true;
+    this.render("background");
   }
 
   set gridColor(color: string) {
     this.#gridColor = color;
-    this.shouldRenderAll = true;
+    this.render("background");
   }
 
   set windowSize(size: { width: number; height: number }) {
     this.#windowSize = size;
-    this.setCanvasSize();
   }
 
   set mousePosition(position: Coordinates) {
@@ -256,25 +239,20 @@ export class VTT extends BaseClass {
 
   set position(position: Coordinates) {
     this.#position = position;
-    this.shouldRenderForeground = true;
   }
 
   set tempPosition(position: Coordinates | null) {
     this.#tempPosition = position;
-    if (position !== null) {
-      this.shouldRenderForeground = true;
-    }
   }
 
   set zoom(zoom: number) {
     if (this.#zoom === zoom) return;
     this.#zoom = zoom;
-    this.shouldRenderForeground = true;
   }
 
   set selectedUnits(units: Unit[]) {
     this.#selectedUnits = units;
-    this.shouldRenderAll = true;
+    this.render("foreground");
   }
 
   set websocketClientId(clientId: string) {
@@ -286,50 +264,55 @@ export class VTT extends BaseClass {
    */
 
   private resizeGrid() {
-    this.#backgroundImageSizeNatural = {
-      width: this.#backgroundImage?.naturalWidth || 0,
-      height: this.#backgroundImage?.naturalHeight || 0,
-    };
-
     this.#backgroundImageSize = {
       width: this.#backgroundImage?.naturalWidth || 0,
       height: this.#backgroundImage?.naturalHeight || 0,
     };
 
-    this.#offScreenCanvas.width = this.#backgroundImageSize.width;
-    this.#offScreenCanvas.height = this.#backgroundImageSize.height;
-
+    this.resizeCanvases();
     const numberOfColumns = Math.ceil(
-      this.#backgroundImageSizeNatural.width / this.#gridSize.width
+      this.#backgroundImageSize.width / this.#gridSize.width
     );
     const numberOfRows = Math.ceil(
-      this.#backgroundImageSizeNatural.height / this.#gridSize.height
+      this.#backgroundImageSize.height / this.#gridSize.height
     );
     this.#grid.populateGrid(numberOfColumns, numberOfRows);
-    this.shouldRenderAll = true;
+    this.renderAll();
+  }
+
+  private resizeCanvases() {
+    Object.keys(this.canvas).forEach((key) => {
+      const canvas = this.canvas[key as CanvasKey];
+      if (!canvas) {
+        console.warn(`Canvas not found - resizeCanvases: ${key}`);
+        return;
+      }
+      canvas.width = this.#backgroundImageSize.width;
+      canvas.height = this.#backgroundImageSize.height;
+    });
   }
 
   private onImageLoad() {
-    this.resizeGrid();
-
     this.#zoom = 1;
-    this.shouldRenderAll = true;
+    this.resizeGrid();
     this.#loading = false;
   }
 
   private onResize() {
     this.windowSize = { width: window.innerWidth, height: window.innerHeight };
-    this.shouldRenderForeground = true;
   }
 
-  private setCanvasSize() {
-    if (!this.#canvas) {
-      console.warn("Canvas not found - setCanvasSize");
+  private clearCanvas(key: CanvasKey) {
+    if (!this.#ctx[key]) {
+      console.warn(`Canvas not found - clearCanvas: ${key}`);
       return;
     }
-    this.#canvas.width = this.#windowSize.width;
-    this.#canvas.height = this.#windowSize.height;
-    this.shouldRenderForeground = true;
+    this.#ctx[key].clearRect(
+      0,
+      0,
+      this.canvas[key].width,
+      this.canvas[key].height
+    );
   }
 
   private async renderLoop() {
@@ -338,63 +321,46 @@ export class VTT extends BaseClass {
       return;
     }
     if (this.#loading) {
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      this.ctx.fillStyle = "black";
-      this.ctx.font = "48px Arial";
-      this.ctx.textAlign = "center";
-      this.ctx.fillText(
+      // this.clearCanvas("foreground");
+      this.ctx.foreground.fillStyle = "black";
+      this.ctx.foreground.font = "48px Arial";
+      this.ctx.foreground.textAlign = "center";
+      this.ctx.foreground.fillText(
         "Loading...",
-        this.canvas.width / 2,
-        this.canvas.height / 2
+        this.canvas.foreground.width / 2,
+        this.canvas.foreground.height / 2
       );
       const id = requestAnimationFrame(() => this.renderLoop());
       this.#animationFrameId = id;
       return;
     }
+
+    if (this.#hud) {
+      this.#hud.style.top = `${this.getPosition().y}px`;
+      this.#hud.style.left = `${this.getPosition().x}px`;
+      this.#hud.style.transform = `scale(${this.#zoom})`;
+    } else {
+      console.warn("HUD not found");
+      this.#hud = document.getElementById("hud") as HTMLDivElement;
+    }
+
     if (this.#renderConditions.background) {
       this.#renderConditions.background = false;
-      this.#offScreenCtx.clearRect(
-        0,
-        0,
-        this.#offScreenCanvas.width,
-        this.#offScreenCanvas.height
-      );
-      this.#offScreenCtx.fillStyle = "black";
-      this.#offScreenCtx.fillRect(
-        0,
-        0,
-        this.#offScreenCanvas.width,
-        this.#offScreenCanvas.height
-      );
+      this.clearCanvas("background");
+      const ctx = this.#ctx.background;
+      const canvas = this.canvas.background;
+      ctx.fillStyle = "black";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      if (this.#backgroundImage?.complete) {
-        renderFullscreenImage(this, this.#backgroundImage);
-      }
+      renderFullscreenImage(this, "background", this.#backgroundImage!);
       this.#grid.draw();
-      this.units.forEach((unit) => renderFogOfWar(unit));
-      this.#units.forEach((unit) => unit.draw());
       renderUnitVision(this);
+      this.units.forEach((unit) => renderFogOfWar(unit));
     }
     if (this.#renderConditions.foreground) {
       this.#renderConditions.foreground = false;
-      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      this.ctx.fillStyle = "#36454f";
-      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-      renderOffScreenCanvas(this);
-      if (this.#isDebug) {
-        this.ctx.fillStyle = "white";
-        this.ctx.fillRect(0, 0, this.canvas.width, 75);
-        this.ctx.textAlign = "center";
-        this.ctx.font = "48px Arial";
-        this.ctx.fillStyle = "black";
-        this.ctx.fillText(
-          `zoom: ${this.zoom.toFixed(2)} | position: ${this.position.x.toFixed(
-            1
-          )}, ${this.position.y.toFixed(1)}`,
-          this.canvas.width / 2,
-          50
-        );
-      }
+      this.clearCanvas("foreground");
+      this.#units.forEach((unit) => unit.draw());
     }
     const id = requestAnimationFrame(() => this.renderLoop());
     this.#animationFrameId = id;
@@ -421,11 +387,23 @@ export class VTT extends BaseClass {
    * Public methods
    */
   init() {
-    if (!this.#canvas) {
-      console.warn("Canvas not found - init");
-      return;
-    }
-    this.setCanvasSize();
+    let canvasFound = true;
+    Object.keys(this.canvas).forEach((key) => {
+      const canvas = this.canvas[key as CanvasKey];
+      if (!canvas) {
+        console.warn(`Canvas not found - init: ${key}`);
+        canvasFound = false;
+      }
+    });
+    if (!canvasFound) return;
+    this.initialized = true;
+    this.#mouseHandler?.destroy();
+    this.#mouseHandler = new MouseHandler(this);
+    this.#mouseHandler.init();
+    this.#keyboardHandler?.destroy();
+    this.#keyboardHandler = new KeyboardHandler(this);
+    this.#keyboardHandler.init();
+    this.resizeCanvases();
     const newUnit = new Unit({
       vtt: this,
       maxHealth: 100,
@@ -443,30 +421,42 @@ export class VTT extends BaseClass {
     this.renderLoop();
   }
 
+  render(canvas: CanvasKey) {
+    this.#renderConditions[canvas] = true;
+  }
+
+  renderAll() {
+    const renderConditions: Record<CanvasKey, boolean> = {
+      background: true,
+      foreground: true,
+    };
+    this.#renderConditions = renderConditions;
+  }
+
   selectUnit(unit: Unit, append: boolean) {
     if (!append) {
       this.deselectAllUnits();
     }
     this.#selectedUnits.push(unit);
-    this.shouldRenderAll = true;
+    this.render("foreground");
   }
 
   deselectUnit(unit: Unit) {
     this.#selectedUnits = this.#selectedUnits.filter((u) => u.id !== unit.id);
-    this.shouldRenderAll = true;
+    this.render("foreground");
   }
 
   deselectAllUnits() {
     if (this.#selectedUnits.length === 0) return;
     this.#selectedUnits = [];
-    this.shouldRenderAll = true;
+    this.render("foreground");
   }
 
   addUnit(unit: Unit, destination: Cell, broadcast = false) {
     unit.vtt = this;
     unit.cell = destination;
     this.#units.push(unit);
-    this.shouldRenderAll = true;
+    this.render("foreground");
 
     if (broadcast && this.websocketChannel) {
       postAddUnit({
@@ -488,7 +478,7 @@ export class VTT extends BaseClass {
     }
     unit.tempPosition = null;
     unit.cell = to;
-    this.shouldRenderAll = true;
+    this.renderAll();
 
     if (broadcast && this.websocketChannel) {
       postMoveUnit({
