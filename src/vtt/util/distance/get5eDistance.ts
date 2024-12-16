@@ -20,21 +20,22 @@ export const get5eDistance = (
 
   // Calculate the number of diagonal and straight moves
   const diagonalMoves = getNumberOfDiagonalMoves(start, end, gridSize);
-  const straightMoves = Math.abs(dx - dy);
+  const straightMoves = Math.round(Math.abs(dx - dy));
 
   // Every second diagonal move counts as 2 moves, but we can't have half a move
   let diagonalMovement = 0;
   for (let i = 0; i < diagonalMoves; i++) {
-    if (i % 2 === (startDiagonal ? 0 : 1)) {
-      diagonalMovement += 1;
-    } else {
+    const doubleMove = i % 2 === (startDiagonal ? 0 : 1);
+    if (doubleMove) {
       diagonalMovement += 2;
+    } else {
+      diagonalMovement += 1;
     }
   }
 
   // Calculate the total distance
-  const numberOfSquares = Math.round(diagonalMovement + straightMoves);
-  const numberOfFeet = numberOfSquares * feetPerSquare;
+  const numberOfSquares = diagonalMoves + straightMoves;
+  const numberOfFeet = (diagonalMovement + straightMoves) * feetPerSquare;
 
   return {
     numberOfFeet,

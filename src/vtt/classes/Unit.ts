@@ -213,7 +213,7 @@ export default class Unit extends BaseClass {
           center,
           this.#vtt.gridSize,
           5,
-          numberOfDiagonalMoves % 2 === 0
+          numberOfDiagonalMoves % 2 === 1
         );
         totalDistance += numberOfFeet;
         numberOfDiagonalMoves += diagonalMoves;
