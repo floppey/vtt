@@ -2,8 +2,7 @@
 import { useMapSettings } from "@/context/mapSettingsContext";
 import { useVtt } from "@/context/vttContext";
 import { useEffect, useRef } from "react";
-import { ConfigureMap } from "@/components/ConfigureMap";
-import { ConfigureUser } from "@/components/ConfigureUser";
+import { LeftToolbar } from "./ui/toolbars/LeftToolbar";
 
 export const LocalVttWrapper: React.FC = () => {
   const { mapSettings } = useMapSettings();
@@ -15,6 +14,7 @@ export const LocalVttWrapper: React.FC = () => {
   useEffect(() => {
     if (vtt) {
       vtt.backgroundImage = mapSettings.backgroundImage;
+      vtt.init();
     }
   }, [vtt, mapSettings.backgroundImage]);
 
@@ -48,8 +48,7 @@ export const LocalVttWrapper: React.FC = () => {
           height="600"
         ></canvas>
       </div>
-      <ConfigureUser />
-      <ConfigureMap />
+      <LeftToolbar />
     </main>
   );
 };

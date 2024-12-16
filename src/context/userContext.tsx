@@ -11,8 +11,6 @@ interface User {
 }
 
 interface UserContextProps extends User {
-  isEditing: boolean;
-  setEditing: (isEditing: boolean) => void;
   setUserName: (name: string) => void;
   setColor: (color: string) => void;
 }
@@ -35,7 +33,6 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({
   const [color, setColor] = useState<string>(
     defaultColors[Math.floor(Math.random() * defaultColors.length - 1)]
   );
-  const [isEditing, setEditing] = useState<boolean>(true);
 
   useEffect(() => {
     const storedUser = tryParseJson<User>(
@@ -68,10 +65,8 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({
         id,
         name: userName,
         color,
-        isEditing,
         setUserName,
         setColor,
-        setEditing,
       }}
     >
       {children}

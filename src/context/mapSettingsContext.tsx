@@ -27,8 +27,6 @@ export interface MapSettings {
 export interface MapSettingsContextProps {
   mapSettings: MapSettings;
   setMapSettings: React.Dispatch<React.SetStateAction<MapSettings>>;
-  isEditing: boolean;
-  setIsEditing: (isEditing: boolean) => void;
 }
 
 const defaultSettings: MapSettings = {
@@ -76,7 +74,6 @@ export const MapSettingsProvider: React.FC<MapSettingsProviderProps> = ({
   };
 
   const [mapSettings, setMapSettings] = useState<MapSettings>(initialSettings);
-  const [isEditing, setIsEditing] = useState<boolean>(false);
 
   useEffect(() => {
     const storedSettings = tryParseJson<MapSettings>(
@@ -144,8 +141,6 @@ export const MapSettingsProvider: React.FC<MapSettingsProviderProps> = ({
       value={{
         mapSettings,
         setMapSettings: setSafeMapSettings,
-        isEditing,
-        setIsEditing,
       }}
     >
       {children}

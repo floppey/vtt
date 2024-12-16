@@ -1,28 +1,24 @@
 import { useUser } from "@/context/userContext";
 import { useVtt } from "@/context/vttContext";
-import React from "react";
+import React, { useEffect } from "react";
 
 export const ConfigureUser: React.FC = () => {
-  const { color, name, setColor, setUserName, isEditing, setEditing } =
-    useUser();
-  const { vtt, initVtt } = useVtt();
+  const { color, name, setColor, setUserName } = useUser();
+  const { vtt } = useVtt();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vtt?.initialized) {
-      initVtt();
-    }
-    setEditing(false);
   };
 
-  if (!isEditing) {
-    return null;
-  }
+  useEffect(() => {
+    if (vtt && vtt.userColor !== color) {
+      vtt.userColor = color;
+    }
+  }, [color, vtt]);
 
   return (
-    <div id="user-settings" className="window window--map">
+    <div id="user-settings">
       <form onSubmit={handleSubmit}>
-        <h2>User Settings</h2>
         <div>
           <label>
             Name:
@@ -45,9 +41,6 @@ export const ConfigureUser: React.FC = () => {
             />
           </label>
         </div>
-        <button type="submit">
-          {vtt?.initialized ? "Save" : "Save and Start VTT"}
-        </button>
       </form>
     </div>
   );

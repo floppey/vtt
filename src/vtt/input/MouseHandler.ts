@@ -68,11 +68,25 @@ export class MouseHandler {
     });
   }
 
+  private ignoreInput(e: MouseEvent | WheelEvent) {
+    return (
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement ||
+      e.target instanceof HTMLButtonElement ||
+      e.target instanceof HTMLSelectElement ||
+      (e.target as HTMLElement)?.closest(".window")
+    );
+  }
+
   clearMoveUnitStartCoordinates() {
     this.#moveUnitStartCoordinates = null;
   }
 
-  private click(_event: MouseEvent) {}
+  private click(event: MouseEvent) {
+    if (this.ignoreInput(event)) {
+      return;
+    }
+  }
 
   private mouseMove(event: MouseEvent) {
     this.#vtt.mousePosition = { x: event.clientX, y: event.clientY };
@@ -132,10 +146,16 @@ export class MouseHandler {
   }
 
   private contextMenu(event: MouseEvent) {
+    if (this.ignoreInput(event)) {
+      return;
+    }
     event.preventDefault();
   }
 
   private mouseDown(event: MouseEvent) {
+    if (this.ignoreInput(event)) {
+      return;
+    }
     // if right mouse button is clicked
     if (event.button === 2 && !this.#panMovementStartCoordinates) {
       this.#panMovementStartCoordinates = { ...this.#vtt.mousePosition };
@@ -202,6 +222,9 @@ export class MouseHandler {
   }
 
   private onScroll(event: WheelEvent) {
+    if (this.ignoreInput(event)) {
+      return;
+    }
     event.preventDefault();
     this.adjustZoom(event.deltaY > 0 ? "out" : "in");
   }

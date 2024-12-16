@@ -335,7 +335,11 @@ export default class Unit extends BaseClass {
       return;
     }
 
-    ctx.fillStyle = "green";
+    if (this.owner === this.vtt.websocketClientId) {
+      ctx.fillStyle = this.vtt.userColor;
+    } else {
+      ctx.fillStyle = "green";
+    }
     ctx.fillRect(x, y, width, height);
     ctx.font = "12px Arial";
     ctx.fillStyle = "black";

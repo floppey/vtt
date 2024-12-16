@@ -46,6 +46,8 @@ export class VTT extends BaseClass {
   #units: Unit[];
   #selectedUnits: Unit[] = [];
 
+  userColor: string;
+
   initialized = false;
 
   constructor({ websocketChannel }: VTTProps) {
@@ -88,6 +90,7 @@ export class VTT extends BaseClass {
     this.#keyboardHandler = null;
     this.#units = [];
     this.#grid = new Grid(this, 10, 10);
+    this.userColor = "#00FF00";
 
     this.init();
 

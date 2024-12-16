@@ -2,10 +2,9 @@
 import { useMapSettings } from "@/context/mapSettingsContext";
 import { useVtt } from "@/context/vttContext";
 import { useEffect, useRef } from "react";
-import { ConfigureMap } from "@/components/ConfigureMap";
 import { Participants } from "@/components/Participants";
 import { Subscriber } from "@/websockets/Subscriber";
-import { ConfigureUser } from "@/components/ConfigureUser";
+import { LeftToolbar } from "./ui/toolbars/LeftToolbar";
 
 interface VttWrapperProps {
   channel: string;
@@ -54,8 +53,7 @@ export const VttWrapper: React.FC<VttWrapperProps> = ({ channel }) => {
           height="600"
         ></canvas>
       </div>
-      <ConfigureUser />
-      <ConfigureMap />
+      <LeftToolbar />
       {channel && <Participants />}
       {channel && <Subscriber />}
     </main>

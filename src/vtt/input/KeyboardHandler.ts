@@ -69,7 +69,8 @@ export class KeyboardHandler {
       e.target instanceof HTMLInputElement ||
       e.target instanceof HTMLTextAreaElement ||
       e.target instanceof HTMLButtonElement ||
-      e.target instanceof HTMLSelectElement
+      e.target instanceof HTMLSelectElement ||
+      (e.target as HTMLElement)?.closest(".window")
     );
   }
 

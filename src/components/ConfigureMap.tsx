@@ -2,8 +2,7 @@ import { MapSettings, useMapSettings } from "@/context/mapSettingsContext";
 import React, { useState } from "react";
 
 export const ConfigureMap: React.FC = () => {
-  const { mapSettings, setMapSettings, isEditing, setIsEditing } =
-    useMapSettings();
+  const { mapSettings, setMapSettings } = useMapSettings();
   const [syncGridHeightAndWidth, setSyncGridHeightAndWidth] = useState(true);
 
   const handleChange = (field: keyof MapSettings, value: string | number) => {
@@ -40,13 +39,8 @@ export const ConfigureMap: React.FC = () => {
     });
   };
 
-  if (!isEditing) {
-    return null;
-  }
-
   return (
-    <div id="map-settings" className="window window--map">
-      <h2>Map Settings</h2>
+    <div id="map-settings">
       <div>
         <label>
           Background Image URL:
@@ -116,9 +110,6 @@ export const ConfigureMap: React.FC = () => {
             onChange={(e) => handleChange("gridColor", e.target.value)}
           />
         </label>
-      </div>
-      <div>
-        <button onClick={() => setIsEditing(false)}>Save</button>
       </div>
     </div>
   );
