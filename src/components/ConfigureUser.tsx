@@ -10,7 +10,7 @@ export const ConfigureUser: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!vtt?.initialized) {
-      initVtt("background", "foreground");
+      initVtt();
     }
     setEditing(false);
   };

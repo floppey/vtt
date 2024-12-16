@@ -1,10 +1,9 @@
-import { generateGuid } from "@/util/generateGuid";
 import { KeyboardHandler } from "@/vtt/input/KeyboardHandler";
 import { MouseHandler } from "@/vtt/input/MouseHandler";
-import { renderFogOfWar } from "@/vtt/renderFunctions/renderFogOfWar";
+// import { renderFogOfWar } from "@/vtt/renderFunctions/renderFogOfWar";
 import { renderFullscreenImage } from "@/vtt/renderFunctions/renderFullscreenImage";
-import { renderUnitVision } from "@/vtt/renderFunctions/renderUnitVision";
-import { Coordinates, Size } from "@/vtt/types/types";
+// import { renderUnitVision } from "@/vtt/renderFunctions/renderUnitVision";
+import { Coordinates, GridPosition, Size } from "@/vtt/types/types";
 import { Cell } from "@/vtt/classes/Cell";
 import { Grid } from "@/vtt/classes/Grid";
 import Unit from "@/vtt/classes/Unit";
@@ -12,10 +11,9 @@ import { postMoveUnit } from "@/api/postMoveUnit";
 import { BaseClass } from "@/vtt/classes/BaseClass";
 import { postAddUnit } from "@/api/postAddUnit";
 import { generateRandomName } from "@/util/generateRandomUser";
+import { postRemoveUnit } from "@/api/postRemoveUnit";
 
 interface VTTProps {
-  backgroundCanvasId: string;
-  foregroundCanvasId: string;
   websocketChannel: string;
 }
 
@@ -23,7 +21,7 @@ export type CanvasKey = "background" | "foreground";
 
 export class VTT extends BaseClass {
   #websocketChannel: string;
-  #websocketClientId: string;
+  #websocketClientId: string | null;
   #canvas: Record<CanvasKey, HTMLCanvasElement>;
   #ctx: Record<CanvasKey, CanvasRenderingContext2D>;
   #renderConditions: Record<CanvasKey, boolean>;
@@ -34,8 +32,8 @@ export class VTT extends BaseClass {
   #animationFrameId: number;
   #loading: boolean;
   #isDebug: boolean;
-  #mouseHandler: MouseHandler;
-  #keyboardHandler: KeyboardHandler;
+  #mouseHandler: MouseHandler | null;
+  #keyboardHandler: KeyboardHandler | null;
   #backgroundImage: HTMLImageElement | null;
   #backgroundImageSize: Size;
   #position: Coordinates;
@@ -50,23 +48,15 @@ export class VTT extends BaseClass {
 
   initialized = false;
 
-  constructor({
-    backgroundCanvasId,
-    foregroundCanvasId,
-    websocketChannel,
-  }: VTTProps) {
+  constructor({ websocketChannel }: VTTProps) {
     super();
     this.#isDebug = false;
     this.#websocketChannel = websocketChannel;
-    this.#websocketClientId = `unset-${generateGuid()}`;
+    this.#websocketClientId = null;
     this.#hud = document.getElementById("hud") as HTMLDivElement;
     this.#canvas = {
-      background: document.getElementById(
-        backgroundCanvasId
-      ) as HTMLCanvasElement,
-      foreground: document.getElementById(
-        foregroundCanvasId
-      ) as HTMLCanvasElement,
+      background: document.createElement("canvas"),
+      foreground: document.createElement("canvas"),
     };
     this.#ctx = {
       background: this.#canvas.background.getContext(
@@ -94,8 +84,8 @@ export class VTT extends BaseClass {
     this.#backgroundImage = new Image();
     this.#backgroundImageSize = { width: 0, height: 0 };
     this.#backgroundImage.onload = () => this.onImageLoad();
-    this.#mouseHandler = new MouseHandler(this);
-    this.#keyboardHandler = new KeyboardHandler(this);
+    this.#mouseHandler = null;
+    this.#keyboardHandler = null;
     this.#units = [];
     this.#grid = new Grid(this, 10, 10);
 
@@ -106,8 +96,8 @@ export class VTT extends BaseClass {
 
   destroy() {
     cancelAnimationFrame(this.#animationFrameId);
-    this.#mouseHandler.destroy();
-    this.#keyboardHandler.destroy();
+    this.#mouseHandler?.destroy();
+    this.#keyboardHandler?.destroy();
     window.removeEventListener("resize", () => this.onResize());
   }
 
@@ -140,7 +130,7 @@ export class VTT extends BaseClass {
   }
 
   get pressedKeys() {
-    return this.#keyboardHandler.pressedKeys;
+    return this.#keyboardHandler?.pressedKeys;
   }
 
   get tempPosition() {
@@ -254,7 +244,14 @@ export class VTT extends BaseClass {
     this.render("foreground");
   }
 
-  set websocketClientId(clientId: string) {
+  set websocketClientId(clientId: string | null) {
+    if (clientId) {
+      this.units.forEach((unit) => {
+        if (unit.owner === this.#websocketClientId) {
+          unit.owner = clientId;
+        }
+      });
+    }
     this.#websocketClientId = clientId;
   }
 
@@ -283,7 +280,6 @@ export class VTT extends BaseClass {
     Object.keys(this.canvas).forEach((key) => {
       const canvas = this.canvas[key as CanvasKey];
       if (!canvas) {
-        console.warn(`Canvas not found - resizeCanvases: ${key}`);
         return;
       }
       canvas.width = this.#backgroundImageSize.width;
@@ -303,7 +299,6 @@ export class VTT extends BaseClass {
 
   private clearCanvas(key: CanvasKey) {
     if (!this.#ctx[key]) {
-      console.warn(`Canvas not found - clearCanvas: ${key}`);
       return;
     }
     this.#ctx[key].clearRect(
@@ -316,7 +311,6 @@ export class VTT extends BaseClass {
 
   private async renderLoop() {
     if (!this.canvas) {
-      console.warn("Canvas not found - renderLoop");
       return;
     }
     if (this.#loading) {
@@ -339,7 +333,6 @@ export class VTT extends BaseClass {
       this.#hud.style.left = `${this.getPosition().x}px`;
       this.#hud.style.transform = `scale(${this.#zoom})`;
     } else {
-      console.warn("HUD not found");
       this.#hud = document.getElementById("hud") as HTMLDivElement;
     }
 
@@ -353,13 +346,23 @@ export class VTT extends BaseClass {
 
       renderFullscreenImage(this, "background", this.#backgroundImage!);
       this.#grid.draw();
-      renderUnitVision(this);
-      this.units.forEach((unit) => renderFogOfWar(unit));
+      // this.units.forEach((unit) => renderFogOfWar(unit));
+      // renderUnitVision(this);
     }
     if (this.#renderConditions.foreground) {
       this.#renderConditions.foreground = false;
       this.clearCanvas("foreground");
       this.#units.forEach((unit) => unit.draw());
+      if (this.isDebug) {
+        this.ctx.foreground.fillStyle = "white";
+        this.ctx.foreground.font = "24px Arial";
+        this.ctx.foreground.textAlign = "center";
+        this.ctx.foreground.fillText(
+          `VTT: ${this.id} - ${this.#units.length} units`,
+          this.canvas.foreground.width / 2,
+          24
+        );
+      }
     }
     const id = requestAnimationFrame(() => this.renderLoop());
     this.#animationFrameId = id;
@@ -388,10 +391,14 @@ export class VTT extends BaseClass {
   init() {
     let canvasFound = true;
     Object.keys(this.canvas).forEach((key) => {
-      const canvas = this.canvas[key as CanvasKey];
+      const canvas = document.getElementById(key);
       if (!canvas) {
-        console.warn(`Canvas not found - init: ${key}`);
         canvasFound = false;
+      } else {
+        this.#canvas[key as CanvasKey] = canvas as HTMLCanvasElement;
+        this.#ctx[key as CanvasKey] = this.#canvas[key as CanvasKey].getContext(
+          "2d"
+        ) as CanvasRenderingContext2D;
       }
     });
     if (!canvasFound) return;
@@ -404,20 +411,29 @@ export class VTT extends BaseClass {
     this.#keyboardHandler = new KeyboardHandler(this);
     this.#keyboardHandler.init();
     this.resizeCanvases();
-    const newUnit = new Unit({
-      vtt: this,
-      maxHealth: 100,
-      name: generateRandomName(),
-      type: "unit",
-      gridPosition: {
-        row: Math.floor(Math.random() * (this.grid?.cells?.length ?? 0)),
-        col: Math.floor(Math.random() * (this.grid?.cells?.[0]?.length ?? 0)),
-      },
-    });
+
+    this.#units
+      .filter((unit) => unit.owner === this.websocketClientId)
+      .forEach((unit) => this.removeUnit(unit, true));
     this.#units = [];
-    this.addUnit(newUnit, newUnit.cell ?? this.grid.cells[0][0], true);
-    this.selectUnit(this.units[0], false);
-    this.centerCanvasOnUnit(this.units[0]);
+    if (this.websocketClientId) {
+      const newUnit = new Unit({
+        vtt: this,
+        owner: this.websocketClientId,
+        maxHealth: 100,
+        name: generateRandomName(),
+        type: "unit",
+        gridPosition: {
+          row: Math.floor(Math.random() * (this.grid?.cells?.length ?? 0)),
+          col: Math.floor(Math.random() * (this.grid?.cells?.[0]?.length ?? 0)),
+        },
+      });
+
+      this.addUnit(newUnit, newUnit.cell ?? this.grid.cells[0][0], true);
+      this.selectUnit(newUnit, false);
+      this.centerCanvasOnUnit(newUnit);
+    }
+    this.renderAll();
     this.renderLoop();
   }
 
@@ -444,7 +460,7 @@ export class VTT extends BaseClass {
   deselectUnit(unit: Unit) {
     this.#selectedUnits = this.#selectedUnits.filter((u) => u.id !== unit.id);
     if (this.#selectedUnits.length === 0) {
-      this.#mouseHandler.clearMoveUnitStartCoordinates();
+      this.#mouseHandler?.clearMoveUnitStartCoordinates();
     }
     this.render("foreground");
   }
@@ -455,13 +471,20 @@ export class VTT extends BaseClass {
     this.render("foreground");
   }
 
-  addUnit(unit: Unit, destination: Cell, broadcast = false) {
+  addUnit(unit: Unit, destination: GridPosition, broadcast = false) {
+    const duplicate = this.units.find((u) => u.id === unit.id);
+
+    if (duplicate) {
+      duplicate.gridPosition = destination;
+      return;
+    }
+
     unit.vtt = this;
-    unit.cell = destination;
+    unit.gridPosition = destination;
     this.#units.push(unit);
     this.render("foreground");
 
-    if (broadcast && this.websocketChannel) {
+    if (broadcast && this.websocketChannel && this.websocketClientId) {
       postAddUnit({
         unit: unit,
         destination: {
@@ -474,16 +497,28 @@ export class VTT extends BaseClass {
     }
   }
 
+  removeUnit(unit: Unit, broadcast = false) {
+    this.#units = this.#units.filter((u) => u.id !== unit.id);
+    this.render("foreground");
+
+    if (broadcast && this.websocketChannel && this.websocketClientId) {
+      postRemoveUnit({
+        unit: unit,
+        channelId: this.websocketChannel,
+        author: this.websocketClientId,
+      });
+    }
+  }
+
   moveUnit(unit: Unit, to: Cell, broadcast = false): void {
     if (!to) {
-      console.warn("Destination cell not found");
       return;
     }
     unit.tempPosition = null;
     unit.cell = to;
     this.renderAll();
 
-    if (broadcast && this.websocketChannel) {
+    if (broadcast && this.websocketChannel && this.websocketClientId) {
       postMoveUnit({
         unit: unit,
         destination: {

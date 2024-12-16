@@ -10,9 +10,11 @@ export interface InitUnitProps {
   maxHealth: number;
   type: string;
   gridPosition: GridPosition | null;
+  owner: string;
 }
 
 export default class Unit extends BaseClass {
+  #owner: string;
   #visionRadius: number = 6; // 6 cells = 30 feet
   #vtt: VTT;
   #gridPosition: GridPosition | null;
@@ -24,7 +26,14 @@ export default class Unit extends BaseClass {
   #tempPositions: Coordinates[] = [];
   #exploredAreas: GridPosition[] = [];
 
-  constructor({ vtt, name, maxHealth, type, gridPosition }: InitUnitProps) {
+  constructor({
+    vtt,
+    name,
+    maxHealth,
+    type,
+    gridPosition,
+    owner,
+  }: InitUnitProps) {
     super();
     this.#vtt = vtt;
     this.#gridPosition = gridPosition ?? null;
@@ -32,6 +41,7 @@ export default class Unit extends BaseClass {
     this.#maxHealth = maxHealth;
     this.#currentHealth = maxHealth * 0.8;
     this.#type = type;
+    this.#owner = owner;
     if (gridPosition) {
       this.#exploredAreas.push(gridPosition);
     }
@@ -41,8 +51,24 @@ export default class Unit extends BaseClass {
     return this.#visionRadius;
   }
 
+  set visionRadius(visionRadius: number) {
+    this.#visionRadius = visionRadius;
+  }
+
+  set exploredAreas(exploredAreas: GridPosition[]) {
+    this.#exploredAreas = exploredAreas;
+  }
+
   get exploredAreas(): GridPosition[] {
     return this.#exploredAreas;
+  }
+
+  get gridPosition(): GridPosition | null {
+    return this.#gridPosition;
+  }
+
+  set gridPosition(gridPosition: GridPosition | null) {
+    this.#gridPosition = gridPosition;
   }
 
   get cell(): Cell | null {
@@ -52,10 +78,6 @@ export default class Unit extends BaseClass {
     return this.#vtt.grid.cells[this.#gridPosition?.row]?.[
       this.#gridPosition?.col
     ];
-  }
-
-  get gridPosition(): GridPosition | null {
-    return this.#gridPosition;
   }
 
   set cell(cell: Cell | null) {
@@ -71,14 +93,6 @@ export default class Unit extends BaseClass {
     ) {
       this.#exploredAreas.push(this.#gridPosition);
     }
-  }
-
-  set visionRadius(visionRadius: number) {
-    this.#visionRadius = visionRadius;
-  }
-
-  set exploredAreas(exploredAreas: GridPosition[]) {
-    this.#exploredAreas = exploredAreas;
   }
 
   set currentHealth(currentHealth: number) {
@@ -293,6 +307,14 @@ export default class Unit extends BaseClass {
     return this.#vtt.selectedUnits.includes(this);
   }
 
+  get owner(): string {
+    return this.#owner;
+  }
+
+  set owner(owner: string) {
+    this.#owner = owner;
+  }
+
   private drawUnit(
     ctx: CanvasRenderingContext2D,
     position?: Coordinates | null
@@ -358,6 +380,7 @@ export default class Unit extends BaseClass {
       type: this.#type,
       gridPosition: this.#gridPosition,
       visionRadius: this.#visionRadius,
+      owner: this.#owner,
     };
     return JSON.stringify(createProps);
   }

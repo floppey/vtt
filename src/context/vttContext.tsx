@@ -6,7 +6,7 @@ type GlobalVTT = VTT | null;
 export interface VTTContextProps {
   vtt: GlobalVTT;
   setVtt: React.Dispatch<React.SetStateAction<GlobalVTT>>;
-  initVtt: (backgroundCanvasId: string, foregroundCanvasId: string) => void;
+  initVtt: () => void;
 }
 
 export const VttContext = createContext<VTTContextProps | undefined>(undefined);
@@ -20,15 +20,16 @@ export const VttProvider: React.FC<VttProviderProps> = ({
   children,
   channel,
 }) => {
-  const [vtt, setVtt] = useState<GlobalVTT>(null);
+  const [vtt, setVtt] = useState<GlobalVTT>(
+    new VTT({
+      websocketChannel: channel,
+    })
+  );
 
-  const initVtt = (backgroundCanvasId: string, foregroundCanvasId: string) => {
+  const initVtt = () => {
     const newVtt = new VTT({
-      backgroundCanvasId,
-      foregroundCanvasId,
       websocketChannel: channel,
     });
-    newVtt.init();
     setVtt(newVtt);
   };
 

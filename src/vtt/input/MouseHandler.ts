@@ -183,7 +183,7 @@ export class MouseHandler {
       }
 
       // If control key is pressed, do not move the unit
-      if (this.#vtt.pressedKeys[17]) {
+      if (this.#vtt.pressedKeys?.[17]) {
         unit.addTempPosition({
           x: toCell.getX(),
           y: toCell.getY(),

@@ -50,8 +50,8 @@ export const renderUnitVision = (vtt: VTT) => {
       0,
       Math.PI * 2
     );
-    fogCtx.fill();
   });
+  fogCtx.fill();
 
   // Draw the fog overlay
   renderFullscreenImage(vtt, "background", fogCanvas);

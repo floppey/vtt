@@ -1,9 +1,11 @@
+import { postAddUnit } from "@/api/postAddUnit";
 import { useVttChannel } from "@/context/vttChannelContext";
 import { useVtt } from "@/context/vttContext";
 import { createUnit, CreateUnitProps } from "@/vtt/classes/Unit";
 import { GridPosition } from "@/vtt/types/types";
 import { Message } from "ably";
-import { useChannel } from "ably/react";
+import { useChannel, usePresenceListener } from "ably/react";
+import { useEffect, useState } from "react";
 
 interface BaseMessageData {
   author: string;
@@ -28,6 +30,9 @@ type MyMessages = Omit<Message, "message" | "data"> &
 export const Subscriber: React.FC = () => {
   const { vtt } = useVtt();
   const { channel } = useVttChannel();
+  const { presenceData } = usePresenceListener(channel);
+  const [people, setPeople] = useState<string[]>([]);
+  const [previousPeople, setPreviousPeople] = useState<string[]>([]);
 
   useChannel(channel, (message) => {
     const myMessage = message as MyMessages;
@@ -40,14 +45,12 @@ export const Subscriber: React.FC = () => {
 
       const unitToMove = vtt?.units.find((u) => u.id === unit.id);
       if (!unitToMove) {
-        console.error("Unit not found");
         return;
       }
 
       const toCell = vtt?.grid?.cells?.[destination.row]?.[destination.col];
 
       if (!toCell) {
-        console.error("Destination cell not found");
         return;
       }
 
@@ -57,18 +60,63 @@ export const Subscriber: React.FC = () => {
     if (myMessage.name === "addUnit") {
       const { unit: createUnitProps, destination } = myMessage.data;
       const unit = createUnit(createUnitProps);
-
-      const toCell = vtt?.grid?.cells?.[destination.row]?.[destination.col];
-
-      if (!toCell) {
-        console.error("Destination cell not found");
-        return;
-      }
-
-      vtt.addUnit(unit, toCell, false);
+      vtt?.addUnit(unit, destination, false);
       return;
     }
   });
+
+  useEffect(() => {
+    const currentPeople = presenceData.map((member) => member.clientId);
+
+    if (
+      previousPeople.some((person) => !currentPeople.includes(person)) ||
+      currentPeople.some((person) => !previousPeople.includes(person))
+    ) {
+      setPreviousPeople(people);
+      setPeople(currentPeople);
+    }
+  }, [presenceData, people, previousPeople]);
+
+  useEffect(() => {
+    if (!vtt) {
+      return;
+    }
+    if (!vtt.websocketClientId) {
+      return;
+    }
+
+    // Remove units created by people who leave
+    const peopleWhoLeft = previousPeople.filter(
+      (person) => !people.includes(person)
+    );
+
+    peopleWhoLeft.forEach((person) => {
+      vtt?.units.forEach((unit) => {
+        if (person === unit.owner) {
+          vtt.removeUnit(unit);
+        }
+      });
+    });
+
+    // If someone joins, broadcast all units to them
+    if (previousPeople.length < people.length) {
+      const myUnits = vtt?.units.filter(
+        (unit) => unit.owner === vtt.websocketClientId
+      );
+
+      myUnits.forEach((unit) => {
+        postAddUnit({
+          unit: unit,
+          destination: {
+            row: unit.cell?.row ?? 0,
+            col: unit.cell?.col ?? 0,
+          },
+          channelId: vtt.websocketChannel,
+          author: vtt.websocketClientId ?? "",
+        });
+      });
+    }
+  }, [people, previousPeople, vtt]);
 
   return <></>;
 };

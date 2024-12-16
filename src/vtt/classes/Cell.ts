@@ -41,7 +41,6 @@ export class Cell extends BaseClass {
   }
 
   onClick(): void {
-    console.log("Cell clicked", this.#row, this.#col);
     if (this.vtt.isDebug) {
       this.#isSelected = !this.#isSelected;
       this.vtt.render("background");

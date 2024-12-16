@@ -130,7 +130,6 @@ export const MapSettingsProvider: React.FC<MapSettingsProviderProps> = ({
       if (validation.isValid) {
         return settings;
       }
-      console.error(validation.messages);
       return prevSettings;
     });
   };
