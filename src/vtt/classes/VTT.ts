@@ -56,6 +56,7 @@ export class VTT extends BaseClass {
     websocketChannel,
   }: VTTProps) {
     super();
+    this.#isDebug = false;
     this.#websocketChannel = websocketChannel;
     this.#websocketClientId = `unset-${generateGuid()}`;
     this.#hud = document.getElementById("hud") as HTMLDivElement;
@@ -75,12 +76,10 @@ export class VTT extends BaseClass {
         "2d"
       ) as CanvasRenderingContext2D,
     };
-    this.#isDebug = true;
     this.#gridSize = { width: 50, height: 50 };
     this.#gridColor = "#989898";
     this.#gridXOffset = 0;
     this.#gridYOffset = 0;
-
     this.#zoom = 1;
     this.#windowSize = { width: window.innerWidth, height: window.innerHeight };
     this.#animationFrameId = 0;
@@ -397,6 +396,7 @@ export class VTT extends BaseClass {
     });
     if (!canvasFound) return;
     this.initialized = true;
+    this.#isDebug = window.location.host.includes("localhost");
     this.#mouseHandler?.destroy();
     this.#mouseHandler = new MouseHandler(this);
     this.#mouseHandler.init();
