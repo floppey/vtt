@@ -15,8 +15,7 @@
     "next": "15.0.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "vtt": "file:",
-    "@vtt": "file:src"
+    "vtt": "file:"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
