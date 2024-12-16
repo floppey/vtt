@@ -1,5 +1,5 @@
-import { TypeValidator } from "@/util/validateJsonType";
 import { tryParseJson } from "../../util/tryParseJson";
+import { StringValidator, TypeValidator } from "@/validation/Validator";
 
 interface TestType {
   key: string;
@@ -7,7 +7,7 @@ interface TestType {
 
 describe("tryParseJson", () => {
   const mockValidator: TypeValidator<TestType> = {
-    key: (value) => typeof value === "string",
+    key: new StringValidator("key must be a string").isRequired().isString(),
   };
 
   it("should return parsed JSON object when JSON is valid", () => {

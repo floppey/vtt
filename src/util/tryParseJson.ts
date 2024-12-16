@@ -1,12 +1,14 @@
-import { TypeValidator, validateJsonType } from "@/util/validateJsonType";
+import { validateJson } from "@/validation/validateJson";
+import { TypeValidator } from "@/validation/Validator";
 
 export const tryParseJson = <T>(
   jsonString: string | null | undefined,
-  validator: TypeValidator<T>
+  validator: TypeValidator<T>,
+  defaultValue?: T
 ): T | null => {
-  const validation = validateJsonType(jsonString, validator);
+  const validation = validateJson(jsonString, validator);
   if (validation.isValid) {
     return JSON.parse(jsonString!) as T;
   }
-  return null;
+  return defaultValue ?? null;
 };

@@ -7,6 +7,14 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { tryParseJson } from "@/util/tryParseJson";
+import {
+  NumberValidator,
+  SizeValidator,
+  StringValidator,
+  TypeValidator,
+} from "@/validation/Validator";
+import { validateObject } from "@/validation/validateObject";
 
 export interface MapSettings {
   backgroundImage: string;
@@ -31,6 +39,28 @@ const defaultSettings: MapSettings = {
   gridColor: "#989898",
 } as const;
 
+const mapSettingsValidator: TypeValidator<MapSettings> = {
+  backgroundImage: new StringValidator("backgroundImage must be a string")
+    .isRequired()
+    .isString(),
+  gridSize: new SizeValidator(
+    "gridSize must be a Size object with width and height greater than 0"
+  )
+    .isRequired()
+    .isSize()
+    .isValid(),
+  xOffset: new NumberValidator("xOffset must be a number")
+    .isRequired()
+    .isNumber(),
+  yOffset: new NumberValidator("yOffset must be a number")
+    .isRequired()
+    .isNumber(),
+  gridColor: new StringValidator("gridColor must be a string")
+    .isRequired()
+    .isString()
+    .matchesRegex(/^(#[0-9A-F]{6}|rgb\([0-9]{1,3},[0-9]{1,3},[0-9]{1,3}\))$/i),
+};
+
 export const MapSettingsContext = createContext<
   MapSettingsContextProps | undefined
 >(undefined);
@@ -49,12 +79,13 @@ export const MapSettingsProvider: React.FC<MapSettingsProviderProps> = ({
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
   useEffect(() => {
-    const storedSettings = localStorage.getItem("mapSettings");
+    const storedSettings = tryParseJson<MapSettings>(
+      localStorage.getItem("mapSettings"),
+      mapSettingsValidator,
+      defaultSettings
+    );
     if (storedSettings) {
-      setSafeMapSettings({
-        ...defaultSettings,
-        ...JSON.parse(storedSettings),
-      });
+      setSafeMapSettings(storedSettings);
     }
   }, []);
 
@@ -91,10 +122,16 @@ export const MapSettingsProvider: React.FC<MapSettingsProviderProps> = ({
         defaultValue: 0,
       });
 
-      return {
+      const settings = {
         ...prevSettings,
         ...newSettings,
       };
+      const validation = validateObject(settings, mapSettingsValidator);
+      if (validation.isValid) {
+        return settings;
+      }
+      console.error(validation.messages);
+      return prevSettings;
     });
   };
 

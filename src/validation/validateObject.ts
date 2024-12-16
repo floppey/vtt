@@ -1,15 +1,7 @@
-interface Validation {
-  isValid: boolean;
-  messages: string[];
-}
+import { TypeValidator, Validation } from "./Validator";
 
-export type TypeValidator<T> = {
-  [K in keyof T]?: (value: T[K] | undefined) => boolean;
-};
-
-export const validateJsonType = <T extends object>(
-  jsonString: string | null | undefined,
-  // Use a type that includes type information
+export const validateObject = <T extends object>(
+  test: T,
   typeValidator: TypeValidator<T>
 ): Validation => {
   const validation: Validation = {
@@ -18,9 +10,7 @@ export const validateJsonType = <T extends object>(
   };
 
   try {
-    const parsed = JSON.parse(jsonString ?? "null");
-
-    if (parsed === null || parsed === undefined) {
+    if (test === null || test === undefined) {
       validation.isValid = false;
       validation.messages.push("JSON parsing failed");
       return validation;
@@ -33,20 +23,11 @@ export const validateJsonType = <T extends object>(
         return;
       }
 
-      // If the key is not in the parsed JSON, and it's required, fail
-      if (!(key in parsed) && validator(parsed[key]) === false) {
-        validation.isValid = false;
-        validation.messages.push(`Missing required key: ${String(key)}`);
-        return;
-      }
-
-      // Validate the value of the key
-      if (validator(parsed[key]) === false) {
+      const value = test[key];
+      if (!validator.validate(value)) {
         validation.isValid = false;
         validation.messages.push(
-          `Validation failed for key ${String(key)}: Invalid value "${
-            parsed[key]
-          }" (${typeof parsed[key]})`
+          `Validation failed for key ${String(key)}: ${validator.errorMessage}`
         );
       }
     });
