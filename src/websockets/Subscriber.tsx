@@ -45,6 +45,7 @@ export const Subscriber: React.FC = () => {
 
       const unitToMove = vtt?.units.find((u) => u.id === unit.id);
       if (!unitToMove) {
+        vtt?.addUnit(unit, destination, false);
         return;
       }
 
