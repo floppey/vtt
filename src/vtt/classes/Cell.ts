@@ -33,11 +33,11 @@ export class Cell extends BaseClass {
   }
 
   getY(): number {
-    return this.#row * this.#vtt.gridSize.height * this.#vtt.zoom;
+    return this.#row * this.#vtt.gridSize.height;
   }
 
   getX(): number {
-    return this.#col * this.#vtt.gridSize.width * this.#vtt.zoom;
+    return this.#col * this.#vtt.gridSize.width;
   }
 
   onClick(): void {
