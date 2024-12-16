@@ -1,8 +1,8 @@
-import { Coordinates, GridPosition } from "../types/types";
-import { get5eDistance } from "../util/distance/get5eDistance";
-import { BaseClass } from "./BaseClass";
-import { Cell } from "./Cell";
-import { VTT } from "./VTT";
+import { Coordinates, GridPosition } from "@/vtt/types/types";
+import { get5eDistance } from "@/vtt/util/distance/get5eDistance";
+import { BaseClass } from "@/vtt/classes/BaseClass";
+import { Cell } from "@/vtt/classes/Cell";
+import { VTT } from "@/vtt/classes/VTT";
 
 export interface InitUnitProps {
   vtt: VTT;
