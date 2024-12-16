@@ -141,3 +141,33 @@ export class SizeValidator extends Validator<Size> {
     return this;
   }
 }
+
+export class ArrayValidator<T> extends Validator<T[]> {
+  constructor(errorMessage?: string) {
+    super(errorMessage);
+  }
+
+  isArray(optional = false): this {
+    this.addValidation(
+      (value) =>
+        Array.isArray(value) ||
+        (optional && (value === undefined || value === null))
+    );
+    return this;
+  }
+
+  isNotEmpty(): this {
+    this.addValidation((value) => !!value && value.length > 0);
+    return this;
+  }
+
+  hasLength(length: number): this {
+    this.addValidation((value) => !!value && value.length === length);
+    return this;
+  }
+
+  hasMinLength(length: number): this {
+    this.addValidation((value) => !!value && value.length >= length);
+    return this;
+  }
+}

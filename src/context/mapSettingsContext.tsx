@@ -1,4 +1,4 @@
-import { Size } from "@/vtt/types/types";
+import { GridPosition, Size } from "@/vtt/types/types";
 import { clamp } from "@/util/clamp";
 import React, {
   createContext,
@@ -24,9 +24,47 @@ export interface MapSettings {
   gridColor: string;
 }
 
+export interface Resolution {
+  map_origin: GridPosition;
+  map_size: GridPosition;
+  pixels_per_grid: number;
+}
+
+export interface Portal {
+  position: GridPosition;
+  bounds: GridPosition[];
+  rotation: number;
+  closed: boolean;
+  freestanding: boolean;
+}
+
+export interface Light {
+  position: GridPosition;
+  range: number;
+  intensity: number;
+  color: string;
+  shadows: boolean;
+}
+
+export interface Environment {
+  baked_lighting: boolean;
+  ambient_light: string;
+}
+
+export interface MapData {
+  format: number;
+  resolution: Resolution;
+  line_of_sight: GridPosition[][];
+  portals: Portal[];
+  lights: Light[];
+  environment: Environment;
+}
+
 export interface MapSettingsContextProps {
   mapSettings: MapSettings;
   setMapSettings: React.Dispatch<React.SetStateAction<MapSettings>>;
+  mapData: MapData | undefined;
+  setMapData: React.Dispatch<React.SetStateAction<MapData | undefined>>;
 }
 
 const defaultSettings: MapSettings = {
@@ -74,6 +112,7 @@ export const MapSettingsProvider: React.FC<MapSettingsProviderProps> = ({
   };
 
   const [mapSettings, setMapSettings] = useState<MapSettings>(initialSettings);
+  const [mapData, setMapData] = useState<MapData | undefined>(undefined);
 
   useEffect(() => {
     const storedSettings = tryParseJson<MapSettings>(
@@ -141,6 +180,8 @@ export const MapSettingsProvider: React.FC<MapSettingsProviderProps> = ({
       value={{
         mapSettings,
         setMapSettings: setSafeMapSettings,
+        mapData,
+        setMapData,
       }}
     >
       {children}

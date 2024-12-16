@@ -1,9 +1,21 @@
-import { MapSettings, useMapSettings } from "@/context/mapSettingsContext";
+import {
+  MapData,
+  MapSettings,
+  useMapSettings,
+} from "@/context/mapSettingsContext";
+import { tryParseJson } from "@/util/tryParseJson";
+import {
+  ArrayValidator,
+  NumberValidator,
+  TypeValidator,
+} from "@/validation/Validator";
+import { GridPosition } from "@/vtt/types/types";
 import React, { useState } from "react";
 
 export const ConfigureMap: React.FC = () => {
   const { mapSettings, setMapSettings } = useMapSettings();
   const [syncGridHeightAndWidth, setSyncGridHeightAndWidth] = useState(true);
+  const [fileContent, setFileContent] = useState<MapData | null>(null);
 
   const handleChange = (field: keyof MapSettings, value: string | number) => {
     setMapSettings((prevSettings) => {
@@ -39,6 +51,36 @@ export const ConfigureMap: React.FC = () => {
     });
   };
 
+  const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = (
+    event
+  ) => {
+    event.preventDefault();
+    const file = event.target.files?.[0];
+
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result;
+        console.log(typeof content);
+        if (typeof content === "string") {
+          const validator: TypeValidator<MapData> = {
+            format: new NumberValidator("format must be a number").isNumber(),
+            line_of_sight: new ArrayValidator<GridPosition[]>(
+              "line_of_sight must be an array"
+            )
+              .isRequired()
+              .isArray()
+              .isNotEmpty(),
+          };
+          const parsedContent = tryParseJson<MapData>(content, validator);
+          console.log(parsedContent);
+          setFileContent(parsedContent);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
   return (
     <div id="map-settings">
       <div>
@@ -50,6 +92,13 @@ export const ConfigureMap: React.FC = () => {
             onChange={(e) => handleChange("backgroundImage", e.target.value)}
           />
         </label>
+      </div>
+      <div>
+        <label>
+          Upload Map Data (dd2vtt):
+          <input type="file" accept=".dd2vtt" onChange={handleFileChange} />
+        </label>
+        {fileContent && <pre>Map data loaded</pre>}
       </div>
       <div>
         <label>
