@@ -28,7 +28,7 @@ export const Participants: React.FC = () => {
   });
 
   return (
-    <div id="participants" className="window window--participants">
+    <div id="participants">
       <ul>{presenceList}</ul>
     </div>
   );
