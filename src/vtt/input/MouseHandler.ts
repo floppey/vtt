@@ -193,6 +193,7 @@ export class MouseHandler {
 
       if (fromCell.id === toCell.id) {
         unit.tempPosition = null;
+        this.#vtt.render("foreground");
       } else {
         this.#vtt.moveUnit(unit, toCell, true);
       }
