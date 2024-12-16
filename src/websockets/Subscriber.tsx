@@ -20,11 +20,16 @@ interface AddUnitMessageData extends BaseMessageData {
   destination: GridPosition;
 }
 
+interface RemoveUnitMessageData extends BaseMessageData {
+  unit: CreateUnitProps;
+}
+
 type MyMessages = Omit<Message, "message" | "data"> &
   (
     | { name: "base"; data: BaseMessageData }
     | { name: "moveUnit"; data: MoveUnitMessageData }
     | { name: "addUnit"; data: AddUnitMessageData }
+    | { name: "removeUnit"; data: RemoveUnitMessageData }
   );
 
 export const Subscriber: React.FC = () => {
@@ -39,30 +44,39 @@ export const Subscriber: React.FC = () => {
     if (myMessage.data.author === vtt?.websocketClientId) {
       return;
     }
-    if (myMessage.name === "moveUnit") {
-      const { unit: createUnitProps, destination } = myMessage.data;
-      const unit = createUnit(createUnitProps);
+    switch (myMessage.name) {
+      case "base":
+        break;
+      case "moveUnit": {
+        const { unit: createUnitProps, destination } = myMessage.data;
+        const unit = createUnit(createUnitProps);
 
-      const unitToMove = vtt?.units.find((u) => u.id === unit.id);
-      if (!unitToMove) {
+        const unitToMove = vtt?.units.find((u) => u.id === unit.id);
+        if (!unitToMove) {
+          vtt?.addUnit(unit, destination, false);
+          return;
+        }
+
+        const toCell = vtt?.grid?.cells?.[destination.row]?.[destination.col];
+
+        if (!toCell) {
+          break;
+        }
+
+        vtt?.moveUnit(unitToMove, toCell);
+      }
+      case "addUnit": {
+        const { unit: createUnitProps, destination } = myMessage.data;
+        const unit = createUnit(createUnitProps);
         vtt?.addUnit(unit, destination, false);
-        return;
+        break;
       }
-
-      const toCell = vtt?.grid?.cells?.[destination.row]?.[destination.col];
-
-      if (!toCell) {
-        return;
+      case "removeUnit": {
+        const { unit: createUnitProps } = myMessage.data;
+        const unit = createUnit(createUnitProps);
+        vtt?.removeUnit(unit, false);
+        break;
       }
-
-      vtt?.moveUnit(unitToMove, toCell);
-      return;
-    }
-    if (myMessage.name === "addUnit") {
-      const { unit: createUnitProps, destination } = myMessage.data;
-      const unit = createUnit(createUnitProps);
-      vtt?.addUnit(unit, destination, false);
-      return;
     }
   });
 
