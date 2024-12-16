@@ -21,6 +21,7 @@ export const VttWrapper: React.FC<VttWrapperProps> = ({ channel }) => {
   useEffect(() => {
     if (vtt) {
       vtt.backgroundImage = mapSettings.backgroundImage;
+      vtt.init();
     }
   }, [vtt, mapSettings.backgroundImage]);
 

@@ -10,7 +10,6 @@ import Unit from "@/vtt/classes/Unit";
 import { postMoveUnit } from "@/api/postMoveUnit";
 import { BaseClass } from "@/vtt/classes/BaseClass";
 import { postAddUnit } from "@/api/postAddUnit";
-import { generateRandomName } from "@/util/generateRandomUser";
 import { postRemoveUnit } from "@/api/postRemoveUnit";
 
 interface VTTProps {
@@ -419,23 +418,7 @@ export class VTT extends BaseClass {
       .filter((unit) => unit.owner === this.websocketClientId)
       .forEach((unit) => this.removeUnit(unit, true));
     this.#units = [];
-    if (this.websocketClientId) {
-      const newUnit = new Unit({
-        vtt: this,
-        owner: this.websocketClientId,
-        maxHealth: 100,
-        name: generateRandomName(),
-        type: "unit",
-        gridPosition: {
-          row: Math.floor(Math.random() * (this.grid?.cells?.length ?? 0)),
-          col: Math.floor(Math.random() * (this.grid?.cells?.[0]?.length ?? 0)),
-        },
-      });
 
-      this.addUnit(newUnit, newUnit.cell ?? this.grid.cells[0][0], true);
-      this.selectUnit(newUnit, false);
-      this.centerCanvasOnUnit(newUnit);
-    }
     this.renderAll();
     this.renderLoop();
   }

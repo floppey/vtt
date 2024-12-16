@@ -13,7 +13,6 @@ export const Participants: React.FC = () => {
   useEffect(() => {
     if (vtt && vtt.websocketClientId !== ably.auth.clientId) {
       vtt.websocketClientId = ably.auth.clientId ?? "unknown";
-      vtt.init();
     }
   }, [vtt, ably.auth.clientId]);
 
