@@ -164,7 +164,6 @@ export class MouseHandler {
 
   private mouseUp() {
     this.#panMovementStartCoordinates = null;
-    const zoom = 1;
     if (this.#vtt.tempPosition) {
       this.#vtt.position = { ...this.#vtt.tempPosition };
       this.#vtt.tempPosition = null;
