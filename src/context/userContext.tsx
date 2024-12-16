@@ -1,5 +1,5 @@
 import { generateRandomName } from "@/util/generateRandomUser";
-import React, { createContext, useState, ReactNode } from "react";
+import React, { createContext, useState, ReactNode, useEffect } from "react";
 
 interface UserContextProps {
   id: string;
@@ -23,6 +23,14 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({
     Math.floor(Math.random() * defaultColors.length).toString()
   );
   const [isEditing, setEditing] = useState<boolean>(true);
+
+  useEffect(() => {
+    const storedName = localStorage.getItem("user");
+    if (storedName) {
+      setUserName(storedName);
+    }
+  }, []);
+
   return (
     <UserContext.Provider
       value={{

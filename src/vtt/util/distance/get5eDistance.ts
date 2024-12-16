@@ -1,5 +1,5 @@
-import { Coordinates, Size } from "../../types/types";
-import { getNumberOfDiagonalMoves } from "./getNumberOfDiagonalMoves";
+import { Coordinates, Size } from "@/vtt/types/types";
+import { getNumberOfDiagonalMoves } from "@/vtt/util/distance/getNumberOfDiagonalMoves";
 
 interface Distance {
   numberOfFeet: number;

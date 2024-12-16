@@ -1,5 +1,5 @@
-import { CanvasKey, VTT } from "../classes/VTT";
-import { Size } from "../types/types";
+import { CanvasKey, VTT } from "@/vtt/classes/VTT";
+import { Size } from "@/vtt/types/types";
 
 export const renderFullscreenImage = (
   vtt: VTT,

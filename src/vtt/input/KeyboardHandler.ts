@@ -1,5 +1,5 @@
-import Unit from "../classes/Unit";
-import { VTT } from "../classes/VTT";
+import Unit from "@/vtt/classes/Unit";
+import { VTT } from "@/vtt/classes/VTT";
 
 interface EventListeners {
   keydown: (e: KeyboardEvent) => void;

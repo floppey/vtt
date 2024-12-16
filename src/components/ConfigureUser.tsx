@@ -2,7 +2,7 @@ import { useUser } from "@/context/userContext";
 import { useVtt } from "@/context/vttContext";
 import React from "react";
 
-const ConfigureUser: React.FC = () => {
+export const ConfigureUser: React.FC = () => {
   const { color, name, setColor, setUserName, isEditing, setEditing } =
     useUser();
   const { vtt, initVtt } = useVtt();
@@ -52,5 +52,3 @@ const ConfigureUser: React.FC = () => {
     </div>
   );
 };
-
-export default ConfigureUser;

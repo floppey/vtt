@@ -1,4 +1,4 @@
-import { Coordinates, Size } from "../../types/types";
+import { Coordinates, Size } from "@/vtt/types/types";
 
 export const getNumberOfDiagonalMoves = (
   start: Coordinates,

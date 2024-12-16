@@ -2,8 +2,8 @@
 import { useMapSettings } from "@/context/mapSettingsContext";
 import { useVtt } from "@/context/vttContext";
 import { useEffect, useRef } from "react";
-import { ConfigureMap } from "./ConfigureMap";
-import ConfigureUser from "./ConfigureUser";
+import { ConfigureMap } from "@/components/ConfigureMap";
+import { ConfigureUser } from "@/components/ConfigureUser";
 
 export const LocalVttWrapper: React.FC = () => {
   const { mapSettings } = useMapSettings();

@@ -1,6 +1,6 @@
-import { BaseClass } from "./BaseClass";
-import { Cell } from "./Cell";
-import { VTT } from "./VTT";
+import { BaseClass } from "@/vtt/classes/BaseClass";
+import { Cell } from "@/vtt/classes/Cell";
+import { VTT } from "@/vtt/classes/VTT";
 
 export class Grid extends BaseClass {
   #vtt: VTT;

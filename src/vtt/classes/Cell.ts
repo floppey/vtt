@@ -1,5 +1,5 @@
-import { BaseClass } from "./BaseClass";
-import { VTT } from "./VTT";
+import { BaseClass } from "@/vtt/classes/BaseClass";
+import { VTT } from "@/vtt/classes/VTT";
 
 interface CellProps {
   vtt: VTT;

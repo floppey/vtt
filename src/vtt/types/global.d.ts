@@ -1,5 +1,5 @@
-import { KeyboardHandler } from "../input/KeyboardHandler";
-import { MouseHandler } from "../input/MouseHandler";
+import { KeyboardHandler } from "@/vtt/input/KeyboardHandler";
+import { MouseHandler } from "@/vtt/input/MouseHandler";
 
 // global.d.ts
 export {};

@@ -2,9 +2,10 @@
 import { useMapSettings } from "@/context/mapSettingsContext";
 import { useVtt } from "@/context/vttContext";
 import { useEffect, useRef } from "react";
-import { ConfigureMap } from "./ConfigureMap";
-import { Participants } from "./Participants";
+import { ConfigureMap } from "@/components/ConfigureMap";
+import { Participants } from "@/components/Participants";
 import { Subscriber } from "@/websockets/Subscriber";
+import { ConfigureUser } from "@/components/ConfigureUser";
 
 interface VttWrapperProps {
   channel: string;
@@ -14,20 +15,8 @@ export const VttWrapper: React.FC<VttWrapperProps> = ({ channel }) => {
   const { mapSettings } = useMapSettings();
   const { vtt } = useVtt();
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    if (canvasRef.current && vtt) {
-      vtt.canvas = canvasRef.current;
-      vtt.init();
-    }
-
-    return () => {
-      if (vtt) {
-        vtt.destroy();
-      }
-    };
-  }, [vtt]);
+  const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
+  const foregroundCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (vtt) {
@@ -51,8 +40,21 @@ export const VttWrapper: React.FC<VttWrapperProps> = ({ channel }) => {
 
   return (
     <main>
-      <canvas ref={canvasRef} id="canvas" width="800" height="600"></canvas>
-
+      <div id="hud">
+        <canvas
+          ref={backgroundCanvasRef}
+          id="background"
+          width="800"
+          height="600"
+        ></canvas>
+        <canvas
+          ref={foregroundCanvasRef}
+          id="foreground"
+          width="800"
+          height="600"
+        ></canvas>
+      </div>
+      <ConfigureUser />
       <ConfigureMap />
       {channel && <Participants />}
       {channel && <Subscriber />}

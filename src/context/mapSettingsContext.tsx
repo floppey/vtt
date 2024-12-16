@@ -1,5 +1,5 @@
 import { Size } from "@/vtt/types/types";
-import { clamp } from "@/vtt/util/clamp";
+import { clamp } from "@/util/clamp";
 import React, {
   createContext,
   SetStateAction,

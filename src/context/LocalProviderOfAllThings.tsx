@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { MapSettingsProvider } from "./mapSettingsContext";
-import { VttProvider } from "./vttContext";
-import { UserProvider } from "./userContext";
+import { MapSettingsProvider } from "@/context/mapSettingsContext";
+import { VttProvider } from "@/context/vttContext";
+import { UserProvider } from "@/context/userContext";
 
 interface LocalProviderOfAllThingsProps {
   children: React.ReactNode;

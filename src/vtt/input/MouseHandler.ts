@@ -1,6 +1,6 @@
 import { MouseEvent } from "react";
-import { VTT } from "../classes/VTT";
-import { Coordinates } from "../types/types";
+import { VTT } from "@/vtt/classes/VTT";
+import { Coordinates } from "@/vtt/types/types";
 
 type MouseEventListener = (e: MouseEvent) => void;
 type ScrollEventListener = (e: WheelEvent) => void;
@@ -110,23 +110,20 @@ export class MouseHandler {
       const zoom = 1;
       if (unit) {
         const unitSize = Math.min(unit.width, unit.height) * zoom;
+        const canvasCoordinates = this.getCanvasCoordinates(
+          this.#vtt.mousePosition
+        );
         if (
           unit.tempPosition ||
           this.getDistanceBetweenCoordinates(
             this.#moveUnitStartCoordinates,
-            this.#vtt.mousePosition
+            canvasCoordinates
           ) >
             unitSize / 2
         ) {
           unit.tempPosition = {
-            x:
-              this.#vtt.mousePosition.x / zoom -
-              this.#vtt.getPosition().x -
-              unit.width / 2,
-            y:
-              this.#vtt.mousePosition.y / zoom -
-              this.#vtt.getPosition().y -
-              unit.height / 2,
+            x: canvasCoordinates.x - unit.width / 2,
+            y: canvasCoordinates.y - unit.height / 2,
           };
         }
         this.#vtt.render("foreground");

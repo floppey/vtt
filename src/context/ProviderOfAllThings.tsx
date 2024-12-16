@@ -1,11 +1,11 @@
 "use client";
 import * as Ably from "ably";
 import { AblyProvider } from "ably/react";
-import { MapSettingsProvider } from "./mapSettingsContext";
-import { VttProvider } from "./vttContext";
-import { useVttChannel, VttChannelProvider } from "./vttChannelContext";
+import { MapSettingsProvider } from "@/context/mapSettingsContext";
+import { VttProvider } from "@/context/vttContext";
+import { useVttChannel, VttChannelProvider } from "@/context/vttChannelContext";
 import { ReactNode, useState } from "react";
-import { UserProvider } from "./userContext";
+import { UserProvider } from "@/context/userContext";
 
 interface ProviderOfAllThingsProps {
   children: React.ReactNode;

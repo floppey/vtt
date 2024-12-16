@@ -1,5 +1,5 @@
-import Unit from "../classes/Unit";
-import { renderFullscreenImage } from "./renderFullscreenImage";
+import Unit from "@/vtt/classes/Unit";
+import { renderFullscreenImage } from "@/vtt/renderFunctions/renderFullscreenImage";
 
 export const renderFogOfWar = (unit: Unit): void => {
   if (!unit.cell) return;

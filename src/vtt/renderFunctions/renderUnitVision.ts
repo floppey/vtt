@@ -1,5 +1,5 @@
-import { VTT } from "../classes/VTT";
-import { renderFullscreenImage } from "./renderFullscreenImage";
+import { VTT } from "@/vtt/classes/VTT";
+import { renderFullscreenImage } from "@/vtt/renderFunctions/renderFullscreenImage";
 
 export const renderUnitVision = (vtt: VTT) => {
   // Create a temporary canvas for the fog

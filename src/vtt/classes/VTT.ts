@@ -1,15 +1,15 @@
 import { generateGuid } from "@/util/generateGuid";
-import { KeyboardHandler } from "../input/KeyboardHandler";
-import { MouseHandler } from "../input/MouseHandler";
-import { renderFogOfWar } from "../renderFunctions/renderFogOfWar";
-import { renderFullscreenImage } from "../renderFunctions/renderFullscreenImage";
-import { renderUnitVision } from "../renderFunctions/renderUnitVision";
-import { Coordinates, Size } from "../types/types";
-import { Cell } from "./Cell";
-import { Grid } from "./Grid";
-import Unit from "./Unit";
+import { KeyboardHandler } from "@/vtt/input/KeyboardHandler";
+import { MouseHandler } from "@/vtt/input/MouseHandler";
+import { renderFogOfWar } from "@/vtt/renderFunctions/renderFogOfWar";
+import { renderFullscreenImage } from "@/vtt/renderFunctions/renderFullscreenImage";
+import { renderUnitVision } from "@/vtt/renderFunctions/renderUnitVision";
+import { Coordinates, Size } from "@/vtt/types/types";
+import { Cell } from "@/vtt/classes/Cell";
+import { Grid } from "@/vtt/classes/Grid";
+import Unit from "@/vtt/classes/Unit";
 import { postMoveUnit } from "@/api/postMoveUnit";
-import { BaseClass } from "./BaseClass";
+import { BaseClass } from "@/vtt/classes/BaseClass";
 import { postAddUnit } from "@/api/postAddUnit";
 import { generateRandomName } from "@/util/generateRandomUser";
 
