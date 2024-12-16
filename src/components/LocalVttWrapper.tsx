@@ -3,6 +3,7 @@ import { useMapSettings } from "@/context/mapSettingsContext";
 import { useVtt } from "@/context/vttContext";
 import { useEffect, useRef } from "react";
 import { LeftToolbar } from "./ui/toolbars/LeftToolbar";
+import { RightToolbar } from "./ui/toolbars/RightToolbar";
 
 export const LocalVttWrapper: React.FC = () => {
   const { mapSettings } = useMapSettings();
@@ -49,6 +50,7 @@ export const LocalVttWrapper: React.FC = () => {
         ></canvas>
       </div>
       <LeftToolbar />
+      <RightToolbar />
     </main>
   );
 };

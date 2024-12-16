@@ -474,7 +474,7 @@ export class VTT extends BaseClass {
     this.render("foreground");
   }
 
-  addUnit(unit: Unit, destination: GridPosition, broadcast = false) {
+  addUnit(unit: Unit, destination: GridPosition | null, broadcast = false) {
     const duplicate = this.units.find((u) => u.id === unit.id);
 
     if (duplicate) {
@@ -487,7 +487,16 @@ export class VTT extends BaseClass {
     this.#units.push(unit);
     this.render("foreground");
 
-    if (broadcast && this.websocketChannel && this.websocketClientId) {
+    if (!destination && this.#mouseHandler) {
+      this.#mouseHandler.placeNewUnit = unit;
+    }
+
+    if (
+      destination &&
+      broadcast &&
+      this.websocketChannel &&
+      this.websocketClientId
+    ) {
       postAddUnit({
         unit: unit,
         destination: {

@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { Participants } from "@/components/Participants";
 import { Subscriber } from "@/websockets/Subscriber";
 import { LeftToolbar } from "./ui/toolbars/LeftToolbar";
+import { RightToolbar } from "./ui/toolbars/RightToolbar";
 
 interface VttWrapperProps {
   channel: string;
@@ -54,6 +55,7 @@ export const VttWrapper: React.FC<VttWrapperProps> = ({ channel }) => {
         ></canvas>
       </div>
       <LeftToolbar />
+      <RightToolbar />
       {channel && <Participants />}
       {channel && <Subscriber />}
     </main>

@@ -53,6 +53,10 @@ export class Cell extends BaseClass {
     const width = gridSize.width;
     const height = gridSize.height;
     ctx.strokeStyle = gridColor;
+
+    // Set line width based on zoom so that the grid doesn't get too thick, and doesn't disappear
+    ctx.lineWidth = Math.max(1, Math.min(4, 4 / this.#vtt.zoom));
+
     ctx.strokeRect(this.#col * height, this.#row * width, width, height);
 
     if (this.#isSelected) {

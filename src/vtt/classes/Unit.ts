@@ -39,7 +39,7 @@ export default class Unit extends BaseClass {
     this.#gridPosition = gridPosition ?? null;
     this.#name = name;
     this.#maxHealth = maxHealth;
-    this.#currentHealth = maxHealth * 0.8;
+    this.#currentHealth = maxHealth;
     this.#type = type;
     this.#owner = owner;
     if (gridPosition) {
@@ -132,13 +132,15 @@ export default class Unit extends BaseClass {
 
   private getTempPositions(): (Coordinates | null)[] {
     const positions: (Coordinates | null)[] = [
-      {
-        x: (this.cell?.col ?? 0) * this.#vtt.gridSize.width,
-        y: (this.cell?.row ?? 0) * this.#vtt.gridSize.height,
-      },
       ...this.#tempPositions,
       this.tempPosition,
     ];
+    if (this.cell) {
+      positions.unshift({
+        x: this.cell.col * this.width,
+        y: this.cell.row * this.height,
+      });
+    }
     return positions;
   }
 
@@ -278,18 +280,20 @@ export default class Unit extends BaseClass {
         // Restore canvas state
         ctx.restore();
       }
-      ctx.beginPath();
-      ctx.arc(
-        center.x,
-        center.y,
-        Math.min(this.width, this.height) / 5,
-        0,
-        Math.PI * 2
-      );
-      ctx.fill();
+      if (positions.length > 1) {
+        ctx.beginPath();
+        ctx.arc(
+          center.x,
+          center.y,
+          Math.min(this.width, this.height) / 5,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+      }
 
       // Draw the total distance at the end of the path
-      if (index === positions.length - 1) {
+      if (index === positions.length - 1 && totalDistance > 0) {
         ctx.fillStyle = "black";
         ctx.font = "36px Arial";
         ctx.textAlign = "center";
@@ -322,18 +326,19 @@ export default class Unit extends BaseClass {
     const { gridSize } = this.#vtt;
     const width = gridSize.width;
     const height = gridSize.height;
-    if (!position) {
+
+    if (!position && this.cell) {
       position = {
-        x: (this.cell?.col ?? 0) * width,
-        y: (this.cell?.row ?? 0) * height,
+        x: this.cell.col * width,
+        y: this.cell.row * height,
       };
     }
-
-    const { x, y } = position;
 
     if (!position) {
       return;
     }
+
+    const { x, y } = position;
 
     if (this.owner === this.vtt.websocketClientId) {
       ctx.fillStyle = this.vtt.userColor;

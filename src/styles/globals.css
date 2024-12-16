@@ -141,3 +141,12 @@ button {
     font-size: 2rem;
   }
 }
+
+.toolbar--right {
+  top: 2rem;
+  right: 1rem;
+
+  > button {
+    font-size: 2rem;
+  }
+}

@@ -1,6 +1,7 @@
 import { MouseEvent } from "react";
 import { VTT } from "@/vtt/classes/VTT";
 import { Coordinates } from "@/vtt/types/types";
+import Unit from "../classes/Unit";
 
 type MouseEventListener = (e: MouseEvent) => void;
 type ScrollEventListener = (e: WheelEvent) => void;
@@ -23,6 +24,8 @@ export class MouseHandler {
   #panMovementStartCoordinates: Coordinates | null;
   #moveUnitStartCoordinates: Coordinates | null;
   #eventListeners: Partial<EventListeners> = {};
+
+  placeNewUnit: Unit | null = null;
 
   constructor(vtt: VTT) {
     this.#created = Date.now();
@@ -119,16 +122,16 @@ export class MouseHandler {
         y: boundedY,
       };
     }
-    if (this.#moveUnitStartCoordinates) {
-      const unit = this.#vtt.selectedUnits[0];
-      const zoom = 1;
+    if (this.#moveUnitStartCoordinates || this.placeNewUnit) {
+      const unit = this.placeNewUnit || this.#vtt.selectedUnits[0];
       if (unit) {
-        const unitSize = Math.min(unit.width, unit.height) * zoom;
+        const unitSize = Math.min(unit.width, unit.height);
         const canvasCoordinates = this.getCanvasCoordinates(
           this.#vtt.mousePosition
         );
         if (
           unit.tempPosition ||
+          !this.#moveUnitStartCoordinates ||
           this.getDistanceBetweenCoordinates(
             this.#moveUnitStartCoordinates,
             canvasCoordinates
@@ -189,15 +192,15 @@ export class MouseHandler {
       this.#vtt.tempPosition = null;
     }
 
-    if (this.#moveUnitStartCoordinates) {
-      const fromCell = this.getCellAtCoordinates(
-        this.#moveUnitStartCoordinates
-      );
+    if (this.#moveUnitStartCoordinates || this.placeNewUnit) {
+      const fromCell = this.#moveUnitStartCoordinates
+        ? this.getCellAtCoordinates(this.#moveUnitStartCoordinates)
+        : null;
       const toCell = this.getCellAtMousePosition();
-      if (!fromCell || !toCell) {
+      if (!toCell) {
         return;
       }
-      const unit = this.#vtt.selectedUnits[0];
+      const unit = this.placeNewUnit || this.#vtt.selectedUnits[0];
       if (!unit) {
         return;
       }
@@ -211,12 +214,13 @@ export class MouseHandler {
         return;
       }
 
-      if (fromCell.id === toCell.id) {
+      if (fromCell?.id === toCell.id) {
         unit.tempPosition = null;
         this.#vtt.render("foreground");
       } else {
         this.#vtt.moveUnit(unit, toCell, true);
       }
+      this.placeNewUnit = null;
       this.#moveUnitStartCoordinates = null;
     }
   }
