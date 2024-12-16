@@ -105,6 +105,15 @@ export class KeyboardHandler {
         e.preventDefault();
         this.moveUnits(this.#vtt.selectedUnits, { row: 0, col: 1 });
         break;
+
+      case "Delete":
+        e.preventDefault();
+        this.#vtt.selectedUnits.forEach((unit) =>
+          this.#vtt.removeUnit(unit, true)
+        );
+        this.#vtt.selectedUnits = [];
+        this.#vtt.render("foreground");
+        break;
     }
   };
 
