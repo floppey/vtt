@@ -222,13 +222,14 @@ export class ObjectValidator<T> extends Validator<T> {
       return false;
     }
 
-    if (value && typeof value === "object") {
-      for (const key in this.#typeValidators) {
-        if (this.#typeValidators.hasOwnProperty(key)) {
-          const validator = this.#typeValidators[key];
-          if (validator && !validator.validate(value[key])) {
-            return false;
-          }
+    for (const key in this.#typeValidators) {
+      if (this.#typeValidators.hasOwnProperty(key)) {
+        if (typeof value !== "object" || value === null) {
+          return false;
+        }
+        const validator = this.#typeValidators[key];
+        if (validator && !validator.validate(value[key])) {
+          return false;
         }
       }
     }
