@@ -1,4 +1,4 @@
-import { Size } from "@/vtt/types/types";
+import { Coordinates, GridPosition, Size } from "@/vtt/types/types";
 
 export type ValidatorFunction<T> = (value: T | undefined) => boolean;
 
@@ -142,6 +142,36 @@ export class SizeValidator extends Validator<Size> {
   }
 }
 
+export class CoordinatesValidator extends Validator<Coordinates> {
+  constructor(errorMessage?: string) {
+    super(errorMessage);
+  }
+
+  isCoordinates(optional = false): this {
+    this.addValidation(
+      (value) =>
+        (typeof value?.x === "number" && typeof value?.y === "number") ||
+        (optional && (value === undefined || value === null))
+    );
+    return this;
+  }
+}
+
+export class GridPositionValidator extends Validator<GridPosition> {
+  constructor(errorMessage?: string) {
+    super(errorMessage);
+  }
+
+  isGridPosition(optional = false): this {
+    this.addValidation(
+      (value) =>
+        (typeof value?.col === "number" && typeof value?.row === "number") ||
+        (optional && (value === undefined || value === null))
+    );
+    return this;
+  }
+}
+
 export class ArrayValidator<T> extends Validator<T[]> {
   constructor(errorMessage?: string) {
     super(errorMessage);
@@ -169,5 +199,40 @@ export class ArrayValidator<T> extends Validator<T[]> {
   hasMinLength(length: number): this {
     this.addValidation((value) => !!value && value.length >= length);
     return this;
+  }
+}
+
+export class ObjectValidator<T> extends Validator<T> {
+  #typeValidators: TypeValidator<T> = {};
+
+  constructor(errorMessage?: string) {
+    super(errorMessage);
+  }
+
+  addFieldValidator<K extends keyof T>(
+    key: K,
+    validator: Validator<T[K]>
+  ): this {
+    this.#typeValidators[key] = validator;
+    return this;
+  }
+
+  validate(value: T | undefined): boolean {
+    if (!super.validate(value)) {
+      return false;
+    }
+
+    if (value && typeof value === "object") {
+      for (const key in this.#typeValidators) {
+        if (this.#typeValidators.hasOwnProperty(key)) {
+          const validator = this.#typeValidators[key];
+          if (validator && !validator.validate(value[key])) {
+            return false;
+          }
+        }
+      }
+    }
+
+    return true;
   }
 }

@@ -1,10 +1,10 @@
 import { generateRandomName } from "@/util/generateRandomUser";
 import { tryParseJson } from "@/util/tryParseJson";
+import { userSettingValidator } from "@/validation/premadeValidators";
 import { validateObject } from "@/validation/validateObject";
-import { StringValidator, TypeValidator } from "@/validation/Validator";
 import React, { createContext, useState, ReactNode, useEffect } from "react";
 
-interface User {
+export interface User {
   id: string;
   name: string;
   color: string;
@@ -14,12 +14,6 @@ interface UserContextProps extends User {
   setUserName: (name: string) => void;
   setColor: (color: string) => void;
 }
-
-const userSettingValidator: TypeValidator<User> = {
-  id: new StringValidator("id must be a string").isRequired().isString(),
-  name: new StringValidator("name must be a string").isRequired().isString(),
-  color: new StringValidator("color must be a string").isRequired().isString(),
-};
 
 const UserContext = createContext<UserContextProps | undefined>(undefined);
 

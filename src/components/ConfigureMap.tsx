@@ -4,12 +4,7 @@ import {
   useMapSettings,
 } from "@/context/mapSettingsContext";
 import { tryParseJson } from "@/util/tryParseJson";
-import {
-  ArrayValidator,
-  NumberValidator,
-  TypeValidator,
-} from "@/validation/Validator";
-import { GridPosition } from "@/vtt/types/types";
+import { mapDataValidator } from "@/validation/premadeValidators";
 import React, { useState } from "react";
 
 export const ConfigureMap: React.FC = () => {
@@ -63,16 +58,10 @@ export const ConfigureMap: React.FC = () => {
         const content = e.target?.result;
         console.log(typeof content);
         if (typeof content === "string") {
-          const validator: TypeValidator<MapData> = {
-            format: new NumberValidator("format must be a number").isNumber(),
-            line_of_sight: new ArrayValidator<GridPosition[]>(
-              "line_of_sight must be an array"
-            )
-              .isRequired()
-              .isArray()
-              .isNotEmpty(),
-          };
-          const parsedContent = tryParseJson<MapData>(content, validator);
+          const parsedContent = tryParseJson<MapData>(
+            content,
+            mapDataValidator
+          );
           console.log(parsedContent);
           setFileContent(parsedContent);
         }

@@ -1,4 +1,4 @@
-import { GridPosition, Size } from "@/vtt/types/types";
+import { Coordinates, Size } from "@/vtt/types/types";
 import { clamp } from "@/util/clamp";
 import React, {
   createContext,
@@ -8,13 +8,8 @@ import React, {
   useState,
 } from "react";
 import { tryParseJson } from "@/util/tryParseJson";
-import {
-  NumberValidator,
-  SizeValidator,
-  StringValidator,
-  TypeValidator,
-} from "@/validation/Validator";
 import { validateObject } from "@/validation/validateObject";
+import { mapSettingsValidator } from "@/validation/premadeValidators";
 
 export interface MapSettings {
   backgroundImage: string;
@@ -25,21 +20,21 @@ export interface MapSettings {
 }
 
 export interface Resolution {
-  map_origin: GridPosition;
-  map_size: GridPosition;
+  map_origin: Coordinates;
+  map_size: Coordinates;
   pixels_per_grid: number;
 }
 
 export interface Portal {
-  position: GridPosition;
-  bounds: GridPosition[];
+  position: Coordinates;
+  bounds: Coordinates[];
   rotation: number;
   closed: boolean;
   freestanding: boolean;
 }
 
 export interface Light {
-  position: GridPosition;
+  position: Coordinates;
   range: number;
   intensity: number;
   color: string;
@@ -54,7 +49,7 @@ export interface Environment {
 export interface MapData {
   format: number;
   resolution: Resolution;
-  line_of_sight: GridPosition[][];
+  line_of_sight: Coordinates[][];
   portals: Portal[];
   lights: Light[];
   environment: Environment;
@@ -74,28 +69,6 @@ const defaultSettings: MapSettings = {
   yOffset: 0,
   gridColor: "#989898",
 } as const;
-
-const mapSettingsValidator: TypeValidator<MapSettings> = {
-  backgroundImage: new StringValidator("backgroundImage must be a string")
-    .isRequired()
-    .isString(),
-  gridSize: new SizeValidator(
-    "gridSize must be a Size object with width and height greater than 0"
-  )
-    .isRequired()
-    .isSize()
-    .isValid(),
-  xOffset: new NumberValidator("xOffset must be a number")
-    .isRequired()
-    .isNumber(),
-  yOffset: new NumberValidator("yOffset must be a number")
-    .isRequired()
-    .isNumber(),
-  gridColor: new StringValidator("gridColor must be a string")
-    .isRequired()
-    .isString()
-    .matchesRegex(/^(#[0-9A-F]{6}|rgb\([0-9]{1,3},[0-9]{1,3},[0-9]{1,3}\))$/i),
-};
 
 export const MapSettingsContext = createContext<
   MapSettingsContextProps | undefined
