@@ -7,7 +7,40 @@ import {
   CoordinatesValidator,
   GridPositionValidator,
   ObjectValidator,
+  Validator,
 } from "@/validation/Validator";
+
+describe("Validator", () => {
+  it("should validate that something is defined", () => {
+    const validator = new Validator();
+    expect(validator.validate("test")).toBe(true);
+    expect(validator.validate("")).toBe(true);
+    expect(validator.validate(0)).toBe(true);
+    expect(validator.validate(false)).toBe(true);
+    expect(validator.validate([])).toBe(true);
+    expect(validator.validate({})).toBe(true);
+    expect(validator.validate(undefined)).toBe(false);
+    expect(validator.validate(null)).toBe(false);
+  });
+  it("should validate that something is defined, undefined or null if it is optional", () => {
+    const validator = new Validator({ isOptional: true });
+    expect(validator.validate("test")).toBe(true);
+    expect(validator.validate("")).toBe(true);
+    expect(validator.validate(0)).toBe(true);
+    expect(validator.validate(false)).toBe(true);
+    expect(validator.validate([])).toBe(true);
+    expect(validator.validate({})).toBe(true);
+    expect(validator.validate(undefined)).toBe(true);
+    expect(validator.validate(null)).toBe(true);
+  });
+  it("should validate using a custom validation function", () => {
+    const validator = new Validator<string>().customValidation(
+      (value) => value === "test"
+    );
+    expect(validator.validate("test")).toBe(true);
+    expect(validator.validate("not test")).toBe(false);
+  });
+});
 
 describe("StringValidator", () => {
   it("should validate required string", () => {
@@ -30,6 +63,23 @@ describe("StringValidator", () => {
     const validator = new StringValidator().matchesRegex(/^test$/);
     expect(validator.validate("test")).toBe(true);
     expect(validator.validate("notest")).toBe(false);
+  });
+
+  it("should validate hex color string", () => {
+    const validator = new StringValidator().isHexColor();
+    expect(validator.validate("#123456")).toBe(true);
+    expect(validator.validate("123456")).toBe(true);
+    expect(validator.validate("#FED")).toBe(true);
+    expect(validator.validate("fed")).toBe(true);
+    expect(validator.validate("ffFFEBCF")).toBe(true);
+    expect(validator.validate("#FF575112")).toBe(true);
+
+    expect(validator.validate("#12345")).toBe(false); // 5 characters (not counting #) - hex must be 3, 4, 6 or 8 characters
+    expect(validator.validate("#123456789")).toBe(false); // 9 characters (not counting #) - hex must be 3, 4, 6 or 8 characters
+    expect(validator.validate("#12345Z")).toBe(false); // Z is not a valid hex character
+    expect(validator.validate("")).toBe(false); // empty string
+    expect(validator.validate("#")).toBe(false); // only #, no hex characters
+    expect(validator.validate(undefined)).toBe(false); // undefined
   });
 });
 
@@ -190,6 +240,21 @@ describe("ObjectValidator", () => {
     const validator = new ObjectValidator();
     expect(validator.validate({ key: "value" })).toBe(true);
     expect(validator.validate(undefined)).toBe(false);
+  });
+
+  it("should validate optional object properties", () => {
+    const validator = new ObjectValidator<{
+      prop1?: string;
+      prop2: number;
+    }>().addFieldValidator(
+      "prop1",
+      new StringValidator({ isOptional: true }).isNotEmpty()
+    );
+    expect(validator.validate({ prop1: "value", prop2: 1 })).toBe(true);
+    expect(validator.validate({ prop1: undefined, prop2: 1 })).toBe(true);
+    expect(validator.validate({ prop2: 1 })).toBe(true);
+    /* @ts-expect-error should be an object, but is a string */
+    expect(validator.validate("not an object")).toBe(false);
   });
 
   it("should validate object with field validator", () => {

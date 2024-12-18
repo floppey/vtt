@@ -1,9 +1,9 @@
 import { Coordinates, GridPosition, Size } from "@/vtt/types/types";
 
-export type ValidatorFunction<T> = (value: T | undefined) => boolean;
+export type ValidatorFunction<T> = (value: T) => boolean;
 
 export type TypeValidator<T> = {
-  [K in keyof T]?: Validator<T[K]>;
+  [K in keyof T]?: Validator<Exclude<T[K], undefined>>;
 };
 
 export interface Validation {
@@ -17,7 +17,7 @@ interface ValidatorOptions {
 }
 
 export class Validator<T> {
-  #validations: ValidatorFunction<T | null | undefined>[] = [];
+  #validations: ValidatorFunction<T>[] = [];
   #errorMessage: string = "Validation failed";
   #isOptional;
 
@@ -28,23 +28,32 @@ export class Validator<T> {
     this.#isOptional = Boolean(props?.isOptional);
   }
 
-  validate(value: T | undefined): boolean {
+  validate(value: T | null | undefined): boolean {
     if (this.#isOptional && (value === undefined || value === null)) {
       return true;
     }
-    return (
-      value !== null &&
-      value !== undefined &&
-      this.#validations.every((validator) => validator(value))
-    );
+    if (value === undefined || value === null) {
+      return false;
+    }
+    return this.#validations.every((validator) => validator(value));
   }
 
   get errorMessage(): string {
     return this.#errorMessage;
   }
 
-  addValidation(validator: ValidatorFunction<T | null | undefined>) {
+  protected addValidation(validator: ValidatorFunction<T>) {
     this.#validations.push(validator);
+  }
+
+  customValidation(validator: ValidatorFunction<T>): this {
+    this.#validations.push((value) => {
+      if (!validator(value)) {
+        return false;
+      }
+      return true;
+    });
+    return this;
   }
 }
 
@@ -92,17 +101,17 @@ export class NumberValidator extends Validator<number> {
   }
 
   isFloat(): this {
-    this.addValidation((value) => !!value && value % 1 !== 0);
+    this.addValidation((value) => value % 1 !== 0);
     return this;
   }
 
   isPositive(): this {
-    this.addValidation((value) => !!value && value > 0);
+    this.addValidation((value) => value > 0);
     return this;
   }
 
   isNegative(): this {
-    this.addValidation((value) => !!value && value < 0);
+    this.addValidation((value) => value < 0);
     return this;
   }
 }
@@ -124,9 +133,7 @@ export class SizeValidator extends Validator<Size> {
   }
 
   isValid(): this {
-    this.addValidation(
-      (value) => (value?.width ?? -1) > 0 && (value?.height ?? -1) > 0
-    );
+    this.addValidation((value) => value.width > 0 && value.height > 0);
     return this;
   }
 }
@@ -134,7 +141,7 @@ export class SizeValidator extends Validator<Size> {
 export class CoordinatesValidator extends Validator<Coordinates> {
   isCoordinates(): this {
     this.addValidation(
-      (value) => typeof value?.x === "number" && typeof value?.y === "number"
+      (value) => typeof value.x === "number" && typeof value.y === "number"
     );
     return this;
   }
@@ -143,8 +150,7 @@ export class CoordinatesValidator extends Validator<Coordinates> {
 export class GridPositionValidator extends Validator<GridPosition> {
   isGridPosition(): this {
     this.addValidation(
-      (value) =>
-        typeof value?.col === "number" && typeof value?.row === "number"
+      (value) => typeof value.col === "number" && typeof value.row === "number"
     );
     return this;
   }
@@ -157,35 +163,23 @@ export class ArrayValidator<T> extends Validator<T[]> {
   }
 
   isNotEmpty(): this {
-    this.addValidation((value) => !!value && value.length > 0);
+    this.addValidation((value) => value.length > 0);
     return this;
   }
 
   hasLength(length: number): this {
-    this.addValidation((value) => !!value && value.length === length);
+    this.addValidation((value) => value.length === length);
     return this;
   }
 
   hasMinLength(length: number): this {
-    this.addValidation((value) => !!value && value.length >= length);
+    this.addValidation((value) => value.length >= length);
     return this;
   }
 
   hasValidElements(validator: Validator<T>): this {
     this.addValidation((value) =>
-      // !!value && value.every((element) => validator.validate(element))
-      {
-        if (!value) {
-          return false;
-        }
-        for (const element of value) {
-          if (!validator.validate(element)) {
-            console.error("Failed validation", element);
-            return false;
-          }
-        }
-        return true;
-      }
+      value.every((element) => validator.validate(element))
     );
     return this;
   }
@@ -196,7 +190,7 @@ export class ObjectValidator<T> extends Validator<T> {
 
   addFieldValidator<K extends keyof T>(
     key: K,
-    validator: Validator<T[K]>
+    validator: Validator<Exclude<T[K], undefined>>
   ): this {
     this.#typeValidators[key] = validator;
     return this;
@@ -206,14 +200,19 @@ export class ObjectValidator<T> extends Validator<T> {
     if (!super.validate(value)) {
       return false;
     }
+    // Make sure the value is an object
+    if (typeof value !== "object" || value === null) {
+      return false;
+    }
 
     for (const key in this.#typeValidators) {
       if (this.#typeValidators.hasOwnProperty(key)) {
-        if (typeof value !== "object" || value === null) {
-          return false;
-        }
         const validator = this.#typeValidators[key];
-        if (validator && !validator.validate(value[key])) {
+        if (
+          validator &&
+          /* @ts-expect-error I can't find a way to type this properly, but this works. The problem is that keyof T is not the same as Exclude<T[keyof T], undefined> */
+          !validator.validate(value[key])
+        ) {
           return false;
         }
       }

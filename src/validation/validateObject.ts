@@ -24,6 +24,7 @@ export const validateObject = <T extends object>(
       }
 
       const value = test[key];
+      /* @ts-expect-error I can't find a way to type this properly, but this works. The problem is that keyof T is not the same as Exclude<T[keyof T], undefined> */
       if (!validator.validate(value)) {
         validation.isValid = false;
         validation.messages.push(
