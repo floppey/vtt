@@ -170,6 +170,15 @@ describe("ArrayValidator", () => {
     expect(validator.validate([1, 2, 3])).toBe(true);
     expect(validator.validate([1])).toBe(false);
   });
+
+  it("should validate array elements", () => {
+    const validator = new ArrayValidator<number>().hasValidElements(
+      new NumberValidator().isNumber()
+    );
+    expect(validator.validate([1, 2, 3])).toBe(true);
+    /* @ts-expect-error array should only contain numbers, but contains a string */
+    expect(validator.validate([1, "2", 3])).toBe(false);
+  });
 });
 
 describe("ObjectValidator", () => {

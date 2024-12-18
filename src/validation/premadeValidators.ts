@@ -11,20 +11,52 @@ import {
 } from "./Validator";
 import { User } from "@/context/userContext";
 
+const resolutionValidator = new ObjectValidator<MapData["resolution"]>(
+  "resolution must be an object with map_origin, map_size and pixels_per_grid"
+)
+  .addFieldValidator(
+    "map_origin",
+    new CoordinatesValidator("map_origin must be coordinates")
+      .isRequired()
+      .isCoordinates()
+  )
+  .addFieldValidator(
+    "map_size",
+    new CoordinatesValidator("map_size must be coordinates")
+      .isRequired()
+      .isCoordinates()
+  )
+  .addFieldValidator(
+    "pixels_per_grid",
+    new NumberValidator("pixels_per_grid must be a number")
+      .isRequired()
+      .isNumber()
+  );
+
+const lineOfSightValidator = new ArrayValidator<Coordinates[]>(
+  "line_of_sight must be an array of coordinates arrays"
+)
+  .isRequired()
+  .isArray()
+  .isNotEmpty()
+  .hasValidElements(
+    new ArrayValidator<Coordinates>(
+      "line_of_sight[x] must be an array of coordinates"
+    )
+      .isRequired()
+      .isArray()
+      .isNotEmpty()
+      .hasValidElements(
+        new CoordinatesValidator("line_of_sight[x][y] must be coordinates")
+          .isRequired()
+          .isCoordinates()
+      )
+  );
+
 export const mapDataValidator: TypeValidator<MapData> = {
   format: new NumberValidator("format must be a number").isNumber(),
-  line_of_sight: new ArrayValidator<Coordinates[]>(
-    "line_of_sight must be an array"
-  )
-    .isRequired()
-    .isArray()
-    .isNotEmpty(),
-  resolution: new ObjectValidator<MapData["resolution"]>(
-    "resolution must be an object with map_origin and map_size"
-  ).addFieldValidator(
-    "map_origin",
-    new CoordinatesValidator("map_origin must be an object with x and y")
-  ),
+  line_of_sight: lineOfSightValidator,
+  resolution: resolutionValidator,
 };
 
 export const mapSettingsValidator: TypeValidator<MapSettings> = {

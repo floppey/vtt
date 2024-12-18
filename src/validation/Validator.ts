@@ -200,6 +200,14 @@ export class ArrayValidator<T> extends Validator<T[]> {
     this.addValidation((value) => !!value && value.length >= length);
     return this;
   }
+
+  hasValidElements(validator: Validator<T>): this {
+    this.addValidation(
+      (value) =>
+        !!value && value.every((element) => validator.validate(element))
+    );
+    return this;
+  }
 }
 
 export class ObjectValidator<T> extends Validator<T> {
