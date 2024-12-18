@@ -84,8 +84,12 @@ export const ConfigureMap: React.FC = () => {
       </div>
       <div>
         <label>
-          Upload Map Data (dd2vtt):
-          <input type="file" accept=".dd2vtt" onChange={handleFileChange} />
+          Upload Map Data:
+          <input
+            type="file"
+            accept=".dd2vtt,.uvtt"
+            onChange={handleFileChange}
+          />
         </label>
         {fileContent && <pre>Map data loaded</pre>}
       </div>

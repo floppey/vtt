@@ -50,9 +50,11 @@ export interface MapData {
   format: number;
   resolution: Resolution;
   line_of_sight: Coordinates[][];
+  objects_line_of_sight: Coordinates[][];
   portals: Portal[];
   lights: Light[];
   environment: Environment;
+  image: string;
 }
 
 export interface MapSettingsContextProps {

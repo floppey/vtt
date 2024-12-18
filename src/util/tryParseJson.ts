@@ -9,6 +9,10 @@ export const tryParseJson = <T>(
   const validation = validateJson(jsonString, validator);
   if (validation.isValid) {
     return JSON.parse(jsonString!) as T;
+  } else {
+    validation.messages.forEach((message) => {
+      console.error(message);
+    });
   }
   return defaultValue ?? null;
 };

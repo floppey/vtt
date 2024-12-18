@@ -11,23 +11,32 @@ export interface Validation {
   messages: string[];
 }
 
+interface ValidatorOptions {
+  errorMessage?: string;
+  isOptional?: boolean;
+}
+
 export class Validator<T> {
   #validations: ValidatorFunction<T | null | undefined>[] = [];
   #errorMessage: string = "Validation failed";
+  #isOptional;
 
-  constructor(errorMessage?: string) {
-    if (errorMessage) {
-      this.#errorMessage = errorMessage;
+  constructor(props?: ValidatorOptions) {
+    if (props?.errorMessage) {
+      this.#errorMessage = props?.errorMessage;
     }
-  }
-
-  isRequired(): this {
-    this.#validations.push((value) => value !== undefined && value !== null);
-    return this;
+    this.#isOptional = Boolean(props?.isOptional);
   }
 
   validate(value: T | undefined): boolean {
-    return this.#validations.every((validator) => validator(value));
+    if (this.#isOptional && (value === undefined || value === null)) {
+      return true;
+    }
+    return (
+      value !== null &&
+      value !== undefined &&
+      this.#validations.every((validator) => validator(value))
+    );
   }
 
   get errorMessage(): string {
@@ -40,21 +49,12 @@ export class Validator<T> {
 }
 
 export class StringValidator extends Validator<string> {
-  constructor(errorMessage?: string) {
-    super(errorMessage);
-  }
-
-  isString(optional = false): this {
-    this.addValidation(
-      (value) =>
-        typeof value === "string" ||
-        (optional && (value === undefined || value === null))
-    );
+  isString(): this {
+    this.addValidation((value) => typeof value === "string");
     return this;
   }
 
-  isRequired(): this {
-    super.isRequired();
+  isNotEmpty(): this {
     this.addValidation(
       (value) => typeof value === "string" && value.trim() !== ""
     );
@@ -67,19 +67,22 @@ export class StringValidator extends Validator<string> {
     );
     return this;
   }
+
+  /**
+   * Validates a string as a hex color code, with or without the leading #
+   * @param optional set this to true if the value can be undefined or null
+   * @returns true if the value is a hex color code string
+   */
+  isHexColor(): this {
+    return this.matchesRegex(
+      /^#?([a-f0-9]{3}|[a-f0-9]{6}|[a-f0-9]{4}|[a-f0-9]{8})$/i
+    );
+  }
 }
 
 export class NumberValidator extends Validator<number> {
-  constructor(errorMessage?: string) {
-    super(errorMessage);
-  }
-
-  isNumber(optional = false): this {
-    this.addValidation(
-      (value) =>
-        typeof value === "number" ||
-        (optional && (value === undefined || value === null))
-    );
+  isNumber(): this {
+    this.addValidation((value) => typeof value === "number");
     return this;
   }
 
@@ -105,31 +108,17 @@ export class NumberValidator extends Validator<number> {
 }
 
 export class BooleanValidator extends Validator<boolean> {
-  constructor(errorMessage?: string) {
-    super(errorMessage);
-  }
-
-  isBoolean(optional = false): this {
-    this.addValidation(
-      (value) =>
-        typeof value === "boolean" ||
-        (optional && (value === undefined || value === null))
-    );
+  isBoolean(): this {
+    this.addValidation((value) => typeof value === "boolean");
     return this;
   }
 }
 
 export class SizeValidator extends Validator<Size> {
-  constructor(errorMessage?: string) {
-    super(errorMessage);
-  }
-
-  isSize(optional = false): this {
+  isSize(): this {
     this.addValidation(
       (value) =>
-        (typeof value?.width === "number" &&
-          typeof value?.height === "number") ||
-        (optional && (value === undefined || value === null))
+        typeof value?.width === "number" && typeof value?.height === "number"
     );
     return this;
   }
@@ -143,46 +132,27 @@ export class SizeValidator extends Validator<Size> {
 }
 
 export class CoordinatesValidator extends Validator<Coordinates> {
-  constructor(errorMessage?: string) {
-    super(errorMessage);
-  }
-
-  isCoordinates(optional = false): this {
+  isCoordinates(): this {
     this.addValidation(
-      (value) =>
-        (typeof value?.x === "number" && typeof value?.y === "number") ||
-        (optional && (value === undefined || value === null))
+      (value) => typeof value?.x === "number" && typeof value?.y === "number"
     );
     return this;
   }
 }
 
 export class GridPositionValidator extends Validator<GridPosition> {
-  constructor(errorMessage?: string) {
-    super(errorMessage);
-  }
-
-  isGridPosition(optional = false): this {
+  isGridPosition(): this {
     this.addValidation(
       (value) =>
-        (typeof value?.col === "number" && typeof value?.row === "number") ||
-        (optional && (value === undefined || value === null))
+        typeof value?.col === "number" && typeof value?.row === "number"
     );
     return this;
   }
 }
 
 export class ArrayValidator<T> extends Validator<T[]> {
-  constructor(errorMessage?: string) {
-    super(errorMessage);
-  }
-
-  isArray(optional = false): this {
-    this.addValidation(
-      (value) =>
-        Array.isArray(value) ||
-        (optional && (value === undefined || value === null))
-    );
+  isArray(): this {
+    this.addValidation((value) => Array.isArray(value));
     return this;
   }
 
@@ -202,9 +172,20 @@ export class ArrayValidator<T> extends Validator<T[]> {
   }
 
   hasValidElements(validator: Validator<T>): this {
-    this.addValidation(
-      (value) =>
-        !!value && value.every((element) => validator.validate(element))
+    this.addValidation((value) =>
+      // !!value && value.every((element) => validator.validate(element))
+      {
+        if (!value) {
+          return false;
+        }
+        for (const element of value) {
+          if (!validator.validate(element)) {
+            console.error("Failed validation", element);
+            return false;
+          }
+        }
+        return true;
+      }
     );
     return this;
   }
@@ -212,10 +193,6 @@ export class ArrayValidator<T> extends Validator<T[]> {
 
 export class ObjectValidator<T> extends Validator<T> {
   #typeValidators: TypeValidator<T> = {};
-
-  constructor(errorMessage?: string) {
-    super(errorMessage);
-  }
 
   addFieldValidator<K extends keyof T>(
     key: K,

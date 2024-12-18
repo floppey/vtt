@@ -11,14 +11,14 @@ import {
 
 describe("StringValidator", () => {
   it("should validate required string", () => {
-    const validator = new StringValidator().isRequired();
+    const validator = new StringValidator().isNotEmpty();
     expect(validator.validate("test")).toBe(true);
     expect(validator.validate("")).toBe(false);
     expect(validator.validate(undefined)).toBe(false);
   });
 
   it("should validate optional string", () => {
-    const validator = new StringValidator().isString(true);
+    const validator = new StringValidator({ isOptional: true }).isString();
     expect(validator.validate("test")).toBe(true);
     expect(validator.validate(undefined)).toBe(true);
     expect(validator.validate("")).toBe(true);
@@ -35,13 +35,13 @@ describe("StringValidator", () => {
 
 describe("NumberValidator", () => {
   it("should validate required number", () => {
-    const validator = new NumberValidator().isRequired();
+    const validator = new NumberValidator();
     expect(validator.validate(123)).toBe(true);
     expect(validator.validate(undefined)).toBe(false);
   });
 
   it("should validate optional number", () => {
-    const validator = new NumberValidator().isNumber(true);
+    const validator = new NumberValidator({ isOptional: true }).isNumber();
     expect(validator.validate(123)).toBe(true);
     expect(validator.validate(undefined)).toBe(true);
     /* @ts-expect-error value should be a number, but is a string */
@@ -69,14 +69,14 @@ describe("NumberValidator", () => {
 
 describe("BooleanValidator", () => {
   it("should validate required boolean", () => {
-    const validator = new BooleanValidator().isRequired();
+    const validator = new BooleanValidator();
     expect(validator.validate(true)).toBe(true);
     expect(validator.validate(false)).toBe(true);
     expect(validator.validate(undefined)).toBe(false);
   });
 
   it("should validate optional boolean", () => {
-    const validator = new BooleanValidator().isBoolean(true);
+    const validator = new BooleanValidator({ isOptional: true }).isBoolean();
     expect(validator.validate(true)).toBe(true);
     expect(validator.validate(undefined)).toBe(true);
     /* @ts-expect-error value should be a boolean, but is a string */
@@ -86,13 +86,13 @@ describe("BooleanValidator", () => {
 
 describe("SizeValidator", () => {
   it("should validate required size", () => {
-    const validator = new SizeValidator().isRequired();
+    const validator = new SizeValidator();
     expect(validator.validate({ width: 100, height: 200 })).toBe(true);
     expect(validator.validate(undefined)).toBe(false);
   });
 
   it("should validate optional size", () => {
-    const validator = new SizeValidator().isSize(true);
+    const validator = new SizeValidator({ isOptional: true }).isSize();
     expect(validator.validate({ width: 100, height: 200 })).toBe(true);
     expect(validator.validate(undefined)).toBe(true);
     /* @ts-expect-error width should be a number, but is a string */
@@ -108,13 +108,15 @@ describe("SizeValidator", () => {
 
 describe("CoordinatesValidator", () => {
   it("should validate required coordinates", () => {
-    const validator = new CoordinatesValidator().isRequired();
+    const validator = new CoordinatesValidator();
     expect(validator.validate({ x: 100, y: 200 })).toBe(true);
     expect(validator.validate(undefined)).toBe(false);
   });
 
   it("should validate optional coordinates", () => {
-    const validator = new CoordinatesValidator().isCoordinates(true);
+    const validator = new CoordinatesValidator({
+      isOptional: true,
+    }).isCoordinates();
     expect(validator.validate({ x: 100, y: 200 })).toBe(true);
     expect(validator.validate(undefined)).toBe(true);
     /* @ts-expect-error x should be a number, but is a string */
@@ -124,13 +126,15 @@ describe("CoordinatesValidator", () => {
 
 describe("GridPositionValidator", () => {
   it("should validate required grid position", () => {
-    const validator = new GridPositionValidator().isRequired();
+    const validator = new GridPositionValidator();
     expect(validator.validate({ row: 1, col: 2 })).toBe(true);
     expect(validator.validate(undefined)).toBe(false);
   });
 
   it("should validate optional grid position", () => {
-    const validator = new GridPositionValidator().isGridPosition(true);
+    const validator = new GridPositionValidator({
+      isOptional: true,
+    }).isGridPosition();
     expect(validator.validate({ row: 1, col: 2 })).toBe(true);
     expect(validator.validate(undefined)).toBe(true);
     /* @ts-expect-error row should be a number, but is a string */
@@ -140,13 +144,13 @@ describe("GridPositionValidator", () => {
 
 describe("ArrayValidator", () => {
   it("should validate required array", () => {
-    const validator = new ArrayValidator().isRequired();
+    const validator = new ArrayValidator();
     expect(validator.validate([1, 2, 3])).toBe(true);
     expect(validator.validate(undefined)).toBe(false);
   });
 
   it("should validate optional array", () => {
-    const validator = new ArrayValidator().isArray(true);
+    const validator = new ArrayValidator({ isOptional: true }).isArray();
     expect(validator.validate([1, 2, 3])).toBe(true);
     expect(validator.validate(undefined)).toBe(true);
     /* @ts-expect-error should be an array, but is a string */
@@ -183,7 +187,7 @@ describe("ArrayValidator", () => {
 
 describe("ObjectValidator", () => {
   it("should validate required object", () => {
-    const validator = new ObjectValidator().isRequired();
+    const validator = new ObjectValidator();
     expect(validator.validate({ key: "value" })).toBe(true);
     expect(validator.validate(undefined)).toBe(false);
   });
@@ -191,7 +195,7 @@ describe("ObjectValidator", () => {
   it("should validate object with field validator", () => {
     const validator = new ObjectValidator<{ key: string }>().addFieldValidator(
       "key",
-      new StringValidator().isRequired()
+      new StringValidator().isNotEmpty()
     );
     expect(validator.validate({ key: "value" })).toBe(true);
     expect(validator.validate({ key: "" })).toBe(false);
@@ -208,7 +212,7 @@ describe("ObjectValidator", () => {
       "key",
       new ObjectValidator<{ nested: string }>().addFieldValidator(
         "nested",
-        new StringValidator().isRequired()
+        new StringValidator().isNotEmpty()
       )
     );
     expect(validator.validate({ key: { nested: "value" } })).toBe(true);

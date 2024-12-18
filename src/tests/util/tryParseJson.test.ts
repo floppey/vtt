@@ -7,7 +7,9 @@ interface TestType {
 
 describe("tryParseJson", () => {
   const mockValidator: TypeValidator<TestType> = {
-    key: new StringValidator("key must be a string").isRequired().isString(),
+    key: new StringValidator({ errorMessage: "key must be a string" })
+      .isNotEmpty()
+      .isString(),
   };
 
   it("should return parsed JSON object when JSON is valid", () => {

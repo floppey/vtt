@@ -14,13 +14,16 @@ class TestType {
 
 describe("validateJson", () => {
   const validator: TypeValidator<TestType> = {
-    prop1: new StringValidator("prop1 must be a string")
+    prop1: new StringValidator({ errorMessage: "prop1 must be a string" })
       .isString()
-      .isRequired(),
-    prop2: new NumberValidator("prop2 must be a number").isNumber(),
-    prop3: new BooleanValidator("prop3 must be a boolean, or unset").isBoolean(
-      true
-    ),
+      .isNotEmpty(),
+    prop2: new NumberValidator({
+      errorMessage: "prop2 must be a number",
+    }).isNumber(),
+    prop3: new BooleanValidator({
+      errorMessage: "prop3 must be a boolean, or unset",
+      isOptional: true,
+    }).isBoolean(),
   };
   it("should return true for valid JSON matching the expected type", () => {
     const testObject: TestType = {
