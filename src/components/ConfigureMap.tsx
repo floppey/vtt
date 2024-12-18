@@ -5,12 +5,40 @@ import {
 } from "@/context/mapSettingsContext";
 import { tryParseJson } from "@/util/tryParseJson";
 import { mapDataValidator } from "@/validation/premadeValidators";
-import React, { useState } from "react";
+import { Size } from "@/vtt/types/types";
+import React, { useEffect, useState } from "react";
 
 export const ConfigureMap: React.FC = () => {
-  const { mapSettings, setMapSettings } = useMapSettings();
+  const { mapSettings, setMapSettings, setMapData } = useMapSettings();
   const [syncGridHeightAndWidth, setSyncGridHeightAndWidth] = useState(true);
   const [fileContent, setFileContent] = useState<MapData | null>(null);
+
+  useEffect(() => {
+    if (fileContent) {
+      setMapData(fileContent);
+      if (
+        mapSettings.gridSize.width !== fileContent.resolution.pixels_per_grid ||
+        mapSettings.gridSize.height !== fileContent.resolution.pixels_per_grid
+      ) {
+        setMapSettings((prevSettings) => {
+          const newGridSize: Size = {
+            height: fileContent.resolution.pixels_per_grid,
+            width: fileContent.resolution.pixels_per_grid,
+          };
+          return {
+            ...prevSettings,
+            gridSize: newGridSize,
+          };
+        });
+      }
+    }
+  }, [
+    fileContent,
+    mapSettings.gridSize.height,
+    mapSettings.gridSize.width,
+    setMapData,
+    setMapSettings,
+  ]);
 
   const handleChange = (field: keyof MapSettings, value: string | number) => {
     setMapSettings((prevSettings) => {
@@ -56,14 +84,15 @@ export const ConfigureMap: React.FC = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const content = e.target?.result;
-        console.log(typeof content);
         if (typeof content === "string") {
           const parsedContent = tryParseJson<MapData>(
             content,
             mapDataValidator
           );
-          console.log(parsedContent);
+          console.log("parsedContent", parsedContent);
           setFileContent(parsedContent);
+        } else {
+          console.error("Invalid file content type", typeof content);
         }
       };
       reader.readAsText(file);

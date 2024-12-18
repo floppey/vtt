@@ -11,6 +11,11 @@ import { postMoveUnit } from "@/api/postMoveUnit";
 import { BaseClass } from "@/vtt/classes/BaseClass";
 import { postAddUnit } from "@/api/postAddUnit";
 import { postRemoveUnit } from "@/api/postRemoveUnit";
+import { MapData } from "@/context/mapSettingsContext";
+import { renderWalls } from "../renderFunctions/renderWalls";
+import { renderLineOfSightObjects } from "../renderFunctions/renderLineOfSightObjects";
+import { renderPortals } from "../renderFunctions/renderPortals";
+import { renderLightsWithWalls } from "../renderFunctions/renderLightsWithWalls";
 
 interface VTTProps {
   websocketChannel: string;
@@ -44,6 +49,7 @@ export class VTT extends BaseClass {
   #grid: Grid;
   #units: Unit[];
   #selectedUnits: Unit[] = [];
+  #mapData: MapData | null;
 
   userColor: string;
 
@@ -52,6 +58,7 @@ export class VTT extends BaseClass {
   constructor({ websocketChannel }: VTTProps) {
     super();
     this.#isDebug = false;
+    this.#mapData = null;
     this.#websocketChannel = websocketChannel;
     this.#websocketClientId = null;
     this.#hud = document.getElementById("hud") as HTMLDivElement;
@@ -188,6 +195,10 @@ export class VTT extends BaseClass {
     return this.#websocketClientId;
   }
 
+  get mapData() {
+    return this.#mapData;
+  }
+
   /**
    * Setters
    */
@@ -255,6 +266,10 @@ export class VTT extends BaseClass {
       });
     }
     this.#websocketClientId = clientId;
+  }
+
+  set mapData(data: MapData | null) {
+    this.#mapData = data;
   }
 
   /**
@@ -348,6 +363,12 @@ export class VTT extends BaseClass {
 
       renderFullscreenImage(this, "background", this.#backgroundImage!);
       this.#grid.draw();
+
+      renderLineOfSightObjects(this);
+      renderWalls(this);
+      renderPortals(this);
+      // renderLights(this);
+      renderLightsWithWalls(this);
       // this.units.forEach((unit) => renderFogOfWar(unit));
       // renderUnitVision(this);
     }

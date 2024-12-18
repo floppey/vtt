@@ -116,6 +116,7 @@ const resolutionValidator = new ObjectValidator<MapData["resolution"]>({
 const lineOfSightValidator = (name: string) =>
   new ArrayValidator<Coordinates[]>({
     errorMessage: `${name} must be an array of coordinates arrays`,
+    isOptional: true,
   })
     .isArray()
     .hasValidElements(

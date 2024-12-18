@@ -64,15 +64,15 @@ export class Cell extends BaseClass {
       ctx.fillRect(this.#col * height, this.#row * width, width, height);
     }
 
-    if (this.vtt.isDebug) {
-      ctx.fillStyle = "orange";
-      ctx.font = "24px Arial";
-      ctx.textAlign = "center";
-      ctx.fillText(
-        `${this.#row}, ${this.#col}`,
-        this.#col * height + height / 2,
-        this.#row * width + width / 2
-      );
-    }
+    // if (this.vtt.isDebug) {
+    //   ctx.fillStyle = "orange";
+    //   ctx.font = "24px Arial";
+    //   ctx.textAlign = "center";
+    //   ctx.fillText(
+    //     `${this.#row}, ${this.#col}`,
+    //     this.#col * height + height / 2,
+    //     this.#row * width + width / 2
+    //   );
+    // }
   }
 }

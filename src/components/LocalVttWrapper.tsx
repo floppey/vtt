@@ -6,7 +6,7 @@ import { LeftToolbar } from "./ui/toolbars/LeftToolbar";
 import { RightToolbar } from "./ui/toolbars/RightToolbar";
 
 export const LocalVttWrapper: React.FC = () => {
-  const { mapSettings } = useMapSettings();
+  const { mapSettings, mapData } = useMapSettings();
   const { vtt } = useVtt();
 
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -14,10 +14,20 @@ export const LocalVttWrapper: React.FC = () => {
 
   useEffect(() => {
     if (vtt) {
-      vtt.backgroundImage = mapSettings.backgroundImage;
+      if (mapData?.image) {
+        vtt.backgroundImage = `data:image/jpeg;base64,${mapData.image}`;
+      } else if (mapSettings.backgroundImage) {
+        vtt.backgroundImage = mapSettings.backgroundImage;
+      }
       vtt.init();
     }
-  }, [vtt, mapSettings.backgroundImage]);
+  }, [vtt, mapSettings.backgroundImage, mapData?.image]);
+
+  useEffect(() => {
+    if (vtt) {
+      vtt.mapData = mapData ?? null;
+    }
+  }, [vtt, mapData]);
 
   useEffect(() => {
     if (vtt) {
