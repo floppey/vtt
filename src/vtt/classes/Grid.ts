@@ -38,4 +38,12 @@ export class Grid extends BaseClass {
       });
     });
   }
+
+  drawForeground(): void {
+    this.#cells.forEach((row) => {
+      row.forEach((cell) => {
+        cell.drawForeground();
+      });
+    });
+  }
 }

@@ -43,26 +43,26 @@ export class Cell extends BaseClass {
   onClick(): void {
     if (this.vtt.isDebug) {
       this.#isSelected = !this.#isSelected;
-      this.vtt.render("background");
+      this.vtt.render("foreground");
     }
   }
 
   draw(): void {
     const { gridSize, gridColor } = this.#vtt;
-    const ctx = this.#vtt.ctx.background;
+    const backgroundCtx = this.#vtt.ctx.background;
     const width = gridSize.width;
     const height = gridSize.height;
-    ctx.strokeStyle = gridColor;
+    backgroundCtx.strokeStyle = gridColor;
 
     // Set line width based on zoom so that the grid doesn't get too thick, and doesn't disappear
-    ctx.lineWidth = Math.max(1, Math.min(4, 4 / this.#vtt.zoom));
+    backgroundCtx.lineWidth = Math.max(1, Math.min(4, 4 / this.#vtt.zoom));
 
-    ctx.strokeRect(this.#col * height, this.#row * width, width, height);
-
-    if (this.#isSelected) {
-      ctx.fillStyle = "rgba(0, 0, 255, 0.5)";
-      ctx.fillRect(this.#col * height, this.#row * width, width, height);
-    }
+    backgroundCtx.strokeRect(
+      this.#col * height,
+      this.#row * width,
+      width,
+      height
+    );
 
     // if (this.vtt.isDebug) {
     //   ctx.fillStyle = "orange";
@@ -74,5 +74,22 @@ export class Cell extends BaseClass {
     //     this.#row * width + width / 2
     //   );
     // }
+  }
+
+  drawForeground(): void {
+    const { gridSize } = this.#vtt;
+    const foregroundCtx = this.#vtt.ctx.foreground;
+    const width = gridSize.width;
+    const height = gridSize.height;
+
+    if (this.#isSelected) {
+      foregroundCtx.fillStyle = "rgba(0, 0, 255, 0.5)";
+      foregroundCtx.fillRect(
+        this.#col * height,
+        this.#row * width,
+        width,
+        height
+      );
+    }
   }
 }

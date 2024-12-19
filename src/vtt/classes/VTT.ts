@@ -16,19 +16,21 @@ import { renderWalls } from "../renderFunctions/renderWalls";
 import { renderLineOfSightObjects } from "../renderFunctions/renderLineOfSightObjects";
 import { renderPortals } from "../renderFunctions/renderPortals";
 import { renderLightsWithWalls } from "../renderFunctions/renderLightsWithWalls";
+import { timeFunction } from "@/util/timeFunction";
 
 interface VTTProps {
   websocketChannel: string;
 }
 
 export type CanvasKey = "background" | "foreground";
+export type RenderConditions = Record<CanvasKey, boolean>;
 
 export class VTT extends BaseClass {
   #websocketChannel: string;
   #websocketClientId: string | null;
   #canvas: Record<CanvasKey, HTMLCanvasElement>;
   #ctx: Record<CanvasKey, CanvasRenderingContext2D>;
-  #renderConditions: Record<CanvasKey, boolean>;
+  #renderConditions: RenderConditions;
   #hud: HTMLDivElement;
   #gridSize: Size;
   #zoom: number;
@@ -50,6 +52,7 @@ export class VTT extends BaseClass {
   #units: Unit[];
   #selectedUnits: Unit[] = [];
   #mapData: MapData | null;
+  #lightingCanvas: OffscreenCanvas | null;
 
   userColor: string;
 
@@ -97,6 +100,7 @@ export class VTT extends BaseClass {
     this.#units = [];
     this.#grid = new Grid(this, 10, 10);
     this.userColor = "#00FF00";
+    this.#lightingCanvas = null;
 
     this.init();
 
@@ -199,6 +203,10 @@ export class VTT extends BaseClass {
     return this.#mapData;
   }
 
+  get lightingCanvas() {
+    return this.#lightingCanvas;
+  }
+
   /**
    * Setters
    */
@@ -272,6 +280,10 @@ export class VTT extends BaseClass {
     this.#mapData = data;
   }
 
+  set lightingCanvas(canvas: OffscreenCanvas | null) {
+    this.#lightingCanvas = canvas;
+  }
+
   /**
    * Private methods
    */
@@ -302,6 +314,7 @@ export class VTT extends BaseClass {
       canvas.width = this.#backgroundImageSize.width;
       canvas.height = this.#backgroundImageSize.height;
     });
+    this.#lightingCanvas = null;
   }
 
   private onImageLoad() {
@@ -354,39 +367,44 @@ export class VTT extends BaseClass {
     }
 
     if (this.#renderConditions.background) {
-      this.#renderConditions.background = false;
-      this.clearCanvas("background");
-      const ctx = this.#ctx.background;
-      const canvas = this.canvas.background;
-      ctx.fillStyle = "black";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      timeFunction("Render Background", () => {
+        this.#renderConditions.background = false;
+        this.clearCanvas("background");
+        const ctx = this.#ctx.background;
+        const canvas = this.canvas.background;
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      renderFullscreenImage(this, "background", this.#backgroundImage!);
-      this.#grid.draw();
+        renderFullscreenImage(this, "background", this.#backgroundImage!);
+        this.#grid.draw();
 
-      renderLineOfSightObjects(this);
-      renderWalls(this);
-      renderPortals(this);
-      // renderLights(this);
-      renderLightsWithWalls(this);
-      // this.units.forEach((unit) => renderFogOfWar(unit));
-      // renderUnitVision(this);
+        renderLineOfSightObjects(this);
+        renderWalls(this);
+        renderPortals(this);
+        timeFunction("Render Lights", () => renderLightsWithWalls(this));
+        // this.units.forEach((unit) => renderFogOfWar(unit));
+        // renderUnitVision(this);
+      });
     }
     if (this.#renderConditions.foreground) {
-      this.#renderConditions.foreground = false;
-      this.clearCanvas("foreground");
-      this.#units.forEach((unit) => unit.draw());
-      if (this.isDebug) {
-        this.ctx.foreground.fillStyle = "white";
-        this.ctx.foreground.font = "24px Arial";
-        this.ctx.foreground.textAlign = "center";
-        this.ctx.foreground.fillText(
-          `VTT: ${this.id} - ${this.#units.length} units`,
-          this.canvas.foreground.width / 2,
-          24
-        );
-      }
+      timeFunction("Render Foreground", () => {
+        this.#renderConditions.foreground = false;
+        this.clearCanvas("foreground");
+        this.grid.drawForeground();
+        this.#units.forEach((unit) => unit.draw());
+        if (this.isDebug) {
+          this.ctx.foreground.fillStyle = "white";
+          this.ctx.foreground.font = "24px Arial";
+          this.ctx.foreground.textAlign = "center";
+          this.ctx.foreground.fillText(
+            `VTT: ${this.id} - ${this.#units.length} units`,
+            this.canvas.foreground.width / 2,
+            24
+          );
+        }
+      });
     }
+
     const id = requestAnimationFrame(() => this.renderLoop());
     this.#animationFrameId = id;
   }
@@ -426,6 +444,7 @@ export class VTT extends BaseClass {
     });
     if (!canvasFound) return;
     this.initialized = true;
+    this.#lightingCanvas = null;
     this.#isDebug = window.location.host.includes("localhost");
     this.#mouseHandler?.destroy();
     this.#mouseHandler = new MouseHandler(this);

@@ -9,7 +9,10 @@ import React, {
 } from "react";
 import { tryParseJson } from "@/util/tryParseJson";
 import { validateObject } from "@/validation/validateObject";
-import { mapSettingsValidator } from "@/validation/premadeValidators";
+import {
+  mapDataValidator,
+  mapSettingsValidator,
+} from "@/validation/premadeValidators";
 
 export interface MapSettings {
   backgroundImage: string;
@@ -100,6 +103,16 @@ export const MapSettingsProvider: React.FC<MapSettingsProviderProps> = ({
     }
   }, []);
 
+  useEffect(() => {
+    const storedSettings = tryParseJson<MapData>(
+      localStorage.getItem("mapData"),
+      mapDataValidator
+    );
+    if (storedSettings) {
+      setMapData(storedSettings);
+    }
+  }, []);
+
   const setSafeMapSettings = (action: SetStateAction<MapSettings>) => {
     setMapSettings((prevSettings) => {
       // Resolve the new settings based on the type of action
@@ -147,8 +160,21 @@ export const MapSettingsProvider: React.FC<MapSettingsProviderProps> = ({
 
   // Store map settings in local storage
   useEffect(() => {
-    localStorage.setItem("mapSettings", JSON.stringify(mapSettings));
+    if (mapSettings) {
+      localStorage.setItem("mapSettings", JSON.stringify(mapSettings));
+    } else {
+      localStorage.removeItem("mapSettings");
+    }
   }, [mapSettings]);
+
+  // Store map data in local storage
+  useEffect(() => {
+    if (mapData) {
+      localStorage.setItem("mapData", JSON.stringify(mapData));
+    } else {
+      localStorage.removeItem("mapData");
+    }
+  }, [mapData]);
 
   return (
     <MapSettingsContext.Provider

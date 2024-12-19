@@ -11,7 +11,7 @@ export const tryParseJson = <T>(
     return JSON.parse(jsonString!) as T;
   } else {
     validation.messages.forEach((message) => {
-      console.error(message);
+      console.warn(message);
     });
   }
   return defaultValue ?? null;
