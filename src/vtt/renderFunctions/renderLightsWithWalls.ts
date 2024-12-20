@@ -229,7 +229,7 @@ const buildLightingCanvas = (vtt: VTT) => {
 
     const intersectingWalls = timeFunction("lightIntersectingWalls", () =>
       mapData.walls
-        .filter((wall) => wallIntersectsLight(wall, light))
+        .filter((wall) => wall.blocksVision && wallIntersectsLight(wall, light))
         .map((wall) => getSectionOfWallThatIntersectsLight(wall, light))
     );
 
