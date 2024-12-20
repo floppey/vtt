@@ -15,6 +15,19 @@ export const renderWalls = (vtt: VTT) => {
   ctx.lineWidth = lineWidth;
 
   mapData.walls.forEach((wall) => {
+    if (wall.blocksVision && wall.blocksMovement) {
+      // Blocks vision and movement - this is a normal wall
+      ctx.strokeStyle = "orange";
+    } else if (wall.blocksVision) {
+      // Blocks vision but not movement - this is a fake wall
+      ctx.strokeStyle = "black";
+    } else if (wall.blocksMovement) {
+      // Blocks movement but not vision - this is a window or invisible wall
+      ctx.strokeStyle = "lightblue";
+    } else {
+      // This should never happen
+      ctx.strokeStyle = "black";
+    }
     ctx.beginPath();
     ctx.moveTo(wall.start.x, wall.start.y);
     ctx.lineTo(wall.end.x, wall.end.y);
