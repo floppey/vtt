@@ -6,24 +6,45 @@ import { Participants } from "@/components/Participants";
 import { Subscriber } from "@/websockets/Subscriber";
 import { LeftToolbar } from "./ui/toolbars/LeftToolbar";
 import { RightToolbar } from "./ui/toolbars/RightToolbar";
+import { useUser } from "@/context/userContext";
 
 interface VttWrapperProps {
   channel: string;
 }
 
 export const VttWrapper: React.FC<VttWrapperProps> = ({ channel }) => {
-  const { mapSettings } = useMapSettings();
+  const { mapSettings, mapData } = useMapSettings();
   const { vtt } = useVtt();
+  const { color } = useUser();
 
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const foregroundCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (vtt) {
-      vtt.backgroundImage = mapSettings.backgroundImage;
+      if (mapData?.backgroundImage) {
+        if (mapData.backgroundImageType === "url") {
+          vtt.backgroundImage = `${mapData.backgroundImage}`;
+        } else {
+          vtt.backgroundImage = `data:image/${mapData.backgroundImageType};base64,${mapData.backgroundImage}`;
+        }
+      } else if (mapSettings.backgroundImage) {
+        vtt.backgroundImage = mapSettings.backgroundImage;
+      }
       vtt.init();
     }
-  }, [vtt, mapSettings.backgroundImage]);
+  }, [
+    vtt,
+    mapSettings.backgroundImage,
+    mapData.backgroundImage,
+    mapData.backgroundImageType,
+  ]);
+
+  useEffect(() => {
+    if (vtt) {
+      vtt.mapData = mapData ?? null;
+    }
+  }, [vtt, mapData]);
 
   useEffect(() => {
     if (vtt) {
@@ -38,6 +59,13 @@ export const VttWrapper: React.FC<VttWrapperProps> = ({ channel }) => {
       vtt.gridSize = mapSettings.gridSize;
     }
   }, [vtt, mapSettings.gridSize]);
+
+  useEffect(() => {
+    if (vtt && vtt.userColor !== color) {
+      vtt.userColor = color;
+      vtt.render("foreground");
+    }
+  }, [color, vtt]);
 
   return (
     <main>
