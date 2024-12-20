@@ -1,8 +1,8 @@
 import { VTT } from "../classes/VTT";
 
 export const renderWalls = (vtt: VTT) => {
-  const { mapData } = vtt;
-  if (!mapData || (mapData.walls?.length ?? 0) === 0) {
+  const { mapData, isDebug } = vtt;
+  if (!isDebug || !mapData || (mapData.walls?.length ?? 0) === 0) {
     return;
   }
 
