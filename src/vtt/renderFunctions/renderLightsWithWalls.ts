@@ -3,6 +3,7 @@ import { VTT } from "../classes/VTT";
 import { Coordinates } from "../types/types";
 import { timeFunction } from "@/util/timeFunction";
 import { Light } from "../types/mapData/MapData";
+import { rgbToHex } from "@/util/rgbToHex";
 
 interface Wall {
   start: Coordinates;
@@ -183,11 +184,15 @@ const buildLightingCanvas = (vtt: VTT) => {
       radius // End radius (light fades at this distance)
     );
 
-    // Add color stops for the gradient (light intensity and color)
-    gradient.addColorStop(0, `rgba(255,255,255, 1)`); // Center of the light
-    gradient.addColorStop(light.bright / radius, `rgba(255,255,255, 0.5)`); // Fade to half intensity at the end of the bright range
-    gradient.addColorStop(0.95, `rgba(255,255,255, 0.25)`); // Near edge of the light (fades to quarter intensity)
-    gradient.addColorStop(1, `rgba(255,255,255,  0)`); // Edge of the light (fades to transparent)
+    // Add color stops for the gradient (light intensity)
+    // Center of the light
+    gradient.addColorStop(0, `rgba(255,255,255, 1)`);
+    // Fade to half intensity at the end of the bright range
+    gradient.addColorStop(light.bright / radius, `rgba(255,255,255, 0.5)`);
+    // Near edge of the light (fades to quarter intensity)
+    gradient.addColorStop(0.95, `rgba(255,255,255, 0.25)`);
+    // Edge of the light (fades to transparent)
+    gradient.addColorStop(1, `rgba(255,255,255,  0)`);
 
     // Set the fill style to the gradient
     lightCtx.fillStyle = gradient;
@@ -200,14 +205,18 @@ const buildLightingCanvas = (vtt: VTT) => {
       // light color tint
       const color = hexToRgb(light.tintColor);
       color.a = light.tintAlpha;
-      const tintColor = `${color.r}, ${color.g}, ${color.b}`;
-      gradient.addColorStop(0, `rgba(${tintColor}, ${color.a})`); // Center of the light
-      gradient.addColorStop(
-        light.bright / radius,
-        `rgba(${tintColor}, ${color.a / 2})`
-      ); // Fade to half intensity at the end of the bright range
-      gradient.addColorStop(0.95, `rgba(${tintColor}, ${color.a / 4})`); // Near edge of the light (fades to quarter intensity)
-      gradient.addColorStop(1, `rgba(${tintColor},  0)`); // Edge of the light (fades to transparent)
+      // Add color stops for the gradient (light color)
+      // Center of the light
+      gradient.addColorStop(0, rgbToHex(color));
+      // Fade to half intensity at the end of the bright range
+      color.a /= 2;
+      gradient.addColorStop(light.bright / radius, rgbToHex(color));
+      // Near edge of the light (fades to quarter intensity)
+      color.a /= 2;
+      gradient.addColorStop(0.95, rgbToHex(color));
+      // Edge of the light (fades to transparent)
+      color.a = 0;
+      gradient.addColorStop(1, rgbToHex(color));
       lightCtx.beginPath();
       lightCtx.arc(light.position.x, light.position.y, radius, 0, Math.PI * 2);
       lightCtx.fill();
