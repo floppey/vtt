@@ -1,4 +1,4 @@
-import { Coordinates, Size } from "@/vtt/types/types";
+import { Size } from "@/vtt/types/types";
 import { clamp } from "@/util/clamp";
 import React, {
   createContext,
@@ -7,12 +7,14 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { tryParseJson } from "@/util/tryParseJson";
 import { validateObject } from "@/validation/validateObject";
-import {
-  mapDataValidator,
-  mapSettingsValidator,
-} from "@/validation/premadeValidators";
+import { mapSettingsValidator } from "@/validation/premadeValidators";
+import { MapData } from "@/vtt/types/mapData/MapData";
+import demo_medium from "@/data/mapData/demo_medium.json";
+import { Foundry } from "@/vtt/types/mapData/Foundry";
+import { convertFoundryToMapData } from "@/vtt/util/mapData/convertFoundryToMapData";
+import { hexToRgb } from "@/util/hexToRgb";
+import { rgbToHex } from "@/util/rgbToHex";
 
 export interface MapSettings {
   backgroundImage: string;
@@ -22,57 +24,27 @@ export interface MapSettings {
   gridColor: string;
 }
 
-export interface Resolution {
-  map_origin: Coordinates;
-  map_size: Coordinates;
-  pixels_per_grid: number;
-}
-
-export interface Portal {
-  position: Coordinates;
-  bounds: Coordinates[];
-  rotation: number;
-  closed: boolean;
-  freestanding: boolean;
-}
-
-export interface Light {
-  position: Coordinates;
-  range: number;
-  intensity: number;
-  color: string;
-  shadows: boolean;
-}
-
-export interface Environment {
-  baked_lighting: boolean;
-  ambient_light: string;
-}
-
-export interface MapData {
-  format: number;
-  resolution: Resolution;
-  line_of_sight: Coordinates[][];
-  objects_line_of_sight: Coordinates[][];
-  portals: Portal[];
-  lights: Light[];
-  environment: Environment;
-  image: string;
-}
-
 export interface MapSettingsContextProps {
   mapSettings: MapSettings;
   setMapSettings: React.Dispatch<React.SetStateAction<MapSettings>>;
-  mapData: MapData | undefined;
-  setMapData: React.Dispatch<React.SetStateAction<MapData | undefined>>;
+  mapData: MapData;
+  setMapData: React.Dispatch<React.SetStateAction<MapData>>;
 }
 
-const defaultSettings: MapSettings = {
+const defaultMapSettings: MapSettings = {
   backgroundImage: "/img/demo_medium.jpg",
   gridSize: { width: 150, height: 150 },
   xOffset: 0,
   yOffset: 0,
   gridColor: "#989898",
+} as const;
+
+const demoMapData = convertFoundryToMapData(demo_medium as Foundry);
+
+const defaultMapData: MapData = {
+  ...demoMapData,
+  backgroundImage: "/img/demo_medium.jpg",
+  backgroundImageType: "url",
 } as const;
 
 export const MapSettingsContext = createContext<
@@ -86,32 +58,40 @@ export const MapSettingsProvider: React.FC<MapSettingsProviderProps> = ({
   children,
 }) => {
   const initialSettings = {
-    ...defaultSettings,
+    ...defaultMapSettings,
   };
 
   const [mapSettings, setMapSettings] = useState<MapSettings>(initialSettings);
-  const [mapData, setMapData] = useState<MapData | undefined>(undefined);
+  const [mapData, setMapData] = useState<MapData>(defaultMapData);
 
   useEffect(() => {
-    const storedSettings = tryParseJson<MapSettings>(
-      localStorage.getItem("mapSettings"),
-      mapSettingsValidator,
-      defaultSettings
-    );
-    if (storedSettings) {
-      setSafeMapSettings(storedSettings);
-    }
-  }, []);
+    if (mapData) {
+      setMapSettings((prevSettings) => {
+        const newSettings = {
+          ...prevSettings,
+          gridSize: {
+            width: mapData.cellSize.width,
+            height: mapData.cellSize.height,
+          },
+          gridColor: mapData.gridColor,
+          xOffset: mapData.offset.x,
+          yOffset: mapData.offset.y,
+        };
 
-  useEffect(() => {
-    const storedSettings = tryParseJson<MapData>(
-      localStorage.getItem("mapData"),
-      mapDataValidator
-    );
-    if (storedSettings) {
-      setMapData(storedSettings);
+        if (mapData.backgroundImage) {
+          newSettings.backgroundImage = mapData.backgroundImage;
+        }
+
+        if (mapData.gridColor) {
+          const color = hexToRgb(mapData.gridColor);
+          color.a = mapData.gridAlpha ?? 1;
+          newSettings.gridColor = rgbToHex(color);
+        }
+
+        return newSettings;
+      });
     }
-  }, []);
+  }, [mapData]);
 
   const setSafeMapSettings = (action: SetStateAction<MapSettings>) => {
     setMapSettings((prevSettings) => {
@@ -157,24 +137,6 @@ export const MapSettingsProvider: React.FC<MapSettingsProviderProps> = ({
       return prevSettings;
     });
   };
-
-  // Store map settings in local storage
-  useEffect(() => {
-    if (mapSettings) {
-      localStorage.setItem("mapSettings", JSON.stringify(mapSettings));
-    } else {
-      localStorage.removeItem("mapSettings");
-    }
-  }, [mapSettings]);
-
-  // Store map data in local storage
-  useEffect(() => {
-    if (mapData) {
-      localStorage.setItem("mapData", JSON.stringify(mapData));
-    } else {
-      localStorage.removeItem("mapData");
-    }
-  }, [mapData]);
 
   return (
     <MapSettingsContext.Provider

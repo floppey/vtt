@@ -1,15 +1,19 @@
-import {
-  MapData,
-  MapSettings,
-  useMapSettings,
-} from "@/context/mapSettingsContext";
+import { MapSettings, useMapSettings } from "@/context/mapSettingsContext";
 import { tryParseJson } from "@/util/tryParseJson";
-import { mapDataValidator } from "@/validation/premadeValidators";
+import {
+  foundryValidator,
+  openVttValidator,
+} from "@/validation/premadeValidators";
+import { Foundry } from "@/vtt/types/mapData/Foundry";
+import { ImageType, MapData } from "@/vtt/types/mapData/MapData";
+import { OpenVtt } from "@/vtt/types/mapData/OpenVtt";
 import { Size } from "@/vtt/types/types";
+import { convertFoundryToMapData } from "@/vtt/util/mapData/convertFoundryToMapData";
+import { convertOpenVttToMapData } from "@/vtt/util/mapData/convertOpenVttToMapData";
 import React, { useEffect, useState } from "react";
 
 export const ConfigureMap: React.FC = () => {
-  const { mapSettings, setMapSettings, setMapData } = useMapSettings();
+  const { mapSettings, setMapSettings, mapData, setMapData } = useMapSettings();
   const [syncGridHeightAndWidth, setSyncGridHeightAndWidth] = useState(true);
   const [fileContent, setFileContent] = useState<MapData | null>(null);
 
@@ -17,13 +21,13 @@ export const ConfigureMap: React.FC = () => {
     if (fileContent) {
       setMapData(fileContent);
       if (
-        mapSettings.gridSize.width !== fileContent.resolution.pixels_per_grid ||
-        mapSettings.gridSize.height !== fileContent.resolution.pixels_per_grid
+        mapSettings.gridSize.width !== fileContent.cellSize.width ||
+        mapSettings.gridSize.height !== fileContent.cellSize.height
       ) {
         setMapSettings((prevSettings) => {
           const newGridSize: Size = {
-            height: fileContent.resolution.pixels_per_grid,
-            width: fileContent.resolution.pixels_per_grid,
+            height: fileContent.cellSize.height,
+            width: fileContent.cellSize.width,
           };
           return {
             ...prevSettings,
@@ -74,7 +78,32 @@ export const ConfigureMap: React.FC = () => {
     });
   };
 
-  const handleFileChange: React.ChangeEventHandler<HTMLInputElement> = (
+  const handleBackroundImageFileChange: React.ChangeEventHandler<
+    HTMLInputElement
+  > = (event) => {
+    event.preventDefault();
+    const file = event.target.files?.[0];
+
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result;
+
+        if (typeof content === "string") {
+          const fileType = file.name.split(".").pop() as ImageType;
+          setMapData({
+            ...mapData,
+            backgroundImage: content,
+            backgroundImageType: fileType,
+          });
+        }
+      };
+
+      reader.readAsText(file);
+    }
+  };
+
+  const handleMapDataFileChange: React.ChangeEventHandler<HTMLInputElement> = (
     event
   ) => {
     event.preventDefault();
@@ -84,12 +113,28 @@ export const ConfigureMap: React.FC = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const content = e.target?.result;
+
         if (typeof content === "string") {
-          const parsedContent = tryParseJson<MapData>(
-            content,
-            mapDataValidator
-          );
-          console.log("parsedContent", parsedContent);
+          const fileType = file.name.split(".").pop();
+          let parsedContent: MapData | null = null;
+          switch (fileType) {
+            case "dd2vtt":
+            case "uvtt": {
+              const openVtt = tryParseJson<OpenVtt>(content, openVttValidator);
+              if (openVtt) {
+                parsedContent = convertOpenVttToMapData(openVtt);
+              }
+              break;
+            }
+            case "json": {
+              const foundry = tryParseJson<Foundry>(content, foundryValidator);
+              if (foundry) {
+                parsedContent = convertFoundryToMapData(foundry);
+              }
+              break;
+            }
+          }
+
           setFileContent(parsedContent);
         } else {
           console.error("Invalid file content type", typeof content);
@@ -103,11 +148,11 @@ export const ConfigureMap: React.FC = () => {
     <div id="map-settings">
       <div>
         <label>
-          Background Image URL:
+          Upload Background Image:
           <input
-            type="text"
-            value={mapSettings.backgroundImage}
-            onChange={(e) => handleChange("backgroundImage", e.target.value)}
+            type="file"
+            accept=".jpg,.jpeg,.png,.gif,.webp"
+            onChange={handleBackroundImageFileChange}
           />
         </label>
       </div>
@@ -116,8 +161,8 @@ export const ConfigureMap: React.FC = () => {
           Upload Map Data:
           <input
             type="file"
-            accept=".dd2vtt,.uvtt"
-            onChange={handleFileChange}
+            accept=".dd2vtt,.uvtt,.json"
+            onChange={handleMapDataFileChange}
           />
         </label>
         {fileContent && <pre>Map data loaded</pre>}

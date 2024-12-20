@@ -1,8 +1,8 @@
 import { hexToRgb } from "@/util/hexToRgb";
 import { VTT } from "../classes/VTT";
 import { Coordinates } from "../types/types";
-import { Light } from "@/context/mapSettingsContext";
 import { timeFunction } from "@/util/timeFunction";
+import { Light } from "../types/mapData/MapData";
 
 interface Wall {
   start: Coordinates;
@@ -12,7 +12,7 @@ interface Wall {
 const wallIntersectsLight = (wall: Wall, light: Light): boolean => {
   const { start, end } = wall;
   const { x, y } = light.position;
-  const radius = light.range;
+  const radius = Math.max(light.bright, light.dim);
   const dx = end.x - start.x;
   const dy = end.y - start.y;
   const lineLength = Math.sqrt(dx * dx + dy * dy);
@@ -36,7 +36,7 @@ const getSectionOfWallThatIntersectsLight = (
 ): Wall => {
   const { start, end } = wall;
   const { x, y } = light.position;
-  const radius = light.range;
+  const radius = Math.max(light.bright, light.dim);
   const dx = end.x - start.x;
   const dy = end.y - start.y;
   const lineLength = Math.sqrt(dx * dx + dy * dy);
@@ -138,7 +138,7 @@ export const renderLightsWithWalls = (vtt: VTT) => {
 };
 
 const buildLightingCanvas = (vtt: VTT) => {
-  const { mapData } = vtt;
+  const mapData = vtt.mapData;
   if (!mapData || (mapData.lights?.length ?? 0) === 0) {
     return;
   }
@@ -157,20 +157,6 @@ const buildLightingCanvas = (vtt: VTT) => {
     return;
   }
 
-  // fix lights
-  const lights = mapData.lights.map((light) => {
-    return {
-      ...light,
-      position: {
-        x: light.position.x * vtt.gridSize.width + vtt.gridXOffset,
-        y: light.position.y * vtt.gridSize.height + vtt.gridYOffset,
-      },
-      range: (light.range * (vtt.gridSize.width + vtt.gridSize.height)) / 2,
-    };
-  });
-
-  console.log("Rendering lights with walls", lights.length);
-
   const ctx = vtt.ctx.background;
 
   ctx.save();
@@ -178,24 +164,7 @@ const buildLightingCanvas = (vtt: VTT) => {
   lightingCtx.fillStyle = "black";
   lightingCtx.fillRect(0, 0, width, height);
 
-  // Flatten wall segments into a single array of wall lines
-  const walls: Wall[] = [];
-  mapData.line_of_sight.forEach((wallSegment) => {
-    for (let i = 0; i < wallSegment.length - 1; i++) {
-      walls.push({
-        start: {
-          x: wallSegment[i].x * vtt.gridSize.width + vtt.gridXOffset,
-          y: wallSegment[i].y * vtt.gridSize.height + vtt.gridYOffset,
-        },
-        end: {
-          x: wallSegment[i + 1].x * vtt.gridSize.width + vtt.gridXOffset,
-          y: wallSegment[i + 1].y * vtt.gridSize.height + vtt.gridYOffset,
-        },
-      });
-    }
-  });
-
-  lights.forEach((light) => {
+  mapData.lights.forEach((light) => {
     // Clear the temporary canvases
     lightCtx.clearRect(0, 0, width, height);
     shadowCtx.clearRect(0, 0, width, height);
@@ -203,7 +172,7 @@ const buildLightingCanvas = (vtt: VTT) => {
     // Draw the light
     lightCtx.save();
 
-    const color = hexToRgb(light.color);
+    const radius = Math.max(light.bright, light.dim);
     // Create a radial gradient
     const gradient = lightingCtx.createRadialGradient(
       light.position.x, // Gradient center x (light position)
@@ -211,29 +180,38 @@ const buildLightingCanvas = (vtt: VTT) => {
       0, // Start radius (light is strongest at the center)
       light.position.x, // End radius x (same as center for a circular light)
       light.position.y, // End radius y (same as center for a circular light)
-      light.range // End radius (light fades at this distance)
+      radius // End radius (light fades at this distance)
     );
 
     // Add color stops for the gradient (light intensity and color)
-    gradient.addColorStop(
-      0,
-      `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`
-    ); // Center of the light
-    gradient.addColorStop(0.9, `rgba(${color.r}, ${color.g}, ${color.b}, 0.5)`); // Near edge of the light (fades to half intensity)
-    gradient.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, 0)`); // Edge of the light (fades to transparent)
+    gradient.addColorStop(0, `rgba(255,255,255, 1)`); // Center of the light
+    gradient.addColorStop(light.bright / radius, `rgba(255,255,255, 0.5)`); // Fade to half intensity at the end of the bright range
+    gradient.addColorStop(0.95, `rgba(255,255,255, 0.25)`); // Near edge of the light (fades to quarter intensity)
+    gradient.addColorStop(1, `rgba(255,255,255,  0)`); // Edge of the light (fades to transparent)
 
     // Set the fill style to the gradient
     lightCtx.fillStyle = gradient;
     // Draw a circle (the "light" shape) on the canvas
     lightCtx.beginPath();
-    lightCtx.arc(
-      light.position.x,
-      light.position.y,
-      light.range,
-      0,
-      Math.PI * 2
-    );
+    lightCtx.arc(light.position.x, light.position.y, radius, 0, Math.PI * 2);
     lightCtx.fill();
+
+    if (light.tintAlpha > 0) {
+      // light color tint
+      const color = hexToRgb(light.tintColor);
+      color.a = light.tintAlpha;
+      const tintColor = `${color.r}, ${color.g}, ${color.b}`;
+      gradient.addColorStop(0, `rgba(${tintColor}, ${color.a})`); // Center of the light
+      gradient.addColorStop(
+        light.bright / radius,
+        `rgba(${tintColor}, ${color.a / 2})`
+      ); // Fade to half intensity at the end of the bright range
+      gradient.addColorStop(0.95, `rgba(${tintColor}, ${color.a / 4})`); // Near edge of the light (fades to quarter intensity)
+      gradient.addColorStop(1, `rgba(${tintColor},  0)`); // Edge of the light (fades to transparent)
+      lightCtx.beginPath();
+      lightCtx.arc(light.position.x, light.position.y, radius, 0, Math.PI * 2);
+      lightCtx.fill();
+    }
     lightCtx.restore();
 
     // Draw shadows for this light
@@ -241,7 +219,7 @@ const buildLightingCanvas = (vtt: VTT) => {
     shadowCtx.fillStyle = "black";
 
     const intersectingWalls = timeFunction("lightIntersectingWalls", () =>
-      walls
+      mapData.walls
         .filter((wall) => wallIntersectsLight(wall, light))
         .map((wall) => getSectionOfWallThatIntersectsLight(wall, light))
     );
@@ -260,7 +238,7 @@ const buildLightingCanvas = (vtt: VTT) => {
       }
       points.push(wall.end);
 
-      const shadowLength = light.range * 1.05;
+      const shadowLength = radius * 1.05; // Shadow length (slightly longer than light to make sure it covers the whole area)
       shadowCtx.beginPath();
       shadowCtx.moveTo(wall.start.x, wall.start.y);
 

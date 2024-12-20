@@ -1,8 +1,7 @@
 import { StringValidator } from "@/validation/Validator";
+import { RGB } from "@/vtt/types/types";
 
-export const hexToRgb = (
-  hex: string
-): { r: number; g: number; b: number; a: number } => {
+export const hexToRgb = (hex: string): RGB => {
   const validator = new StringValidator({
     errorMessage: `"${hex}" is not a valid hex color`,
   }).isHexColor();

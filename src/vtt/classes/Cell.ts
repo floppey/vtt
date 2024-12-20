@@ -41,10 +41,10 @@ export class Cell extends BaseClass {
   }
 
   onClick(): void {
-    if (this.vtt.isDebug) {
-      this.#isSelected = !this.#isSelected;
-      this.vtt.render("foreground");
-    }
+    // if (this.vtt.isDebug) {
+    //   this.#isSelected = !this.#isSelected;
+    //   this.vtt.render("foreground");
+    // }
   }
 
   draw(): void {

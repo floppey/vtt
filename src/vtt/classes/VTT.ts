@@ -1,7 +1,7 @@
 import { KeyboardHandler } from "@/vtt/input/KeyboardHandler";
 import { MouseHandler } from "@/vtt/input/MouseHandler";
 // import { renderFogOfWar } from "@/vtt/renderFunctions/renderFogOfWar";
-import { renderFullscreenImage } from "@/vtt/renderFunctions/renderFullscreenImage";
+// import { renderFullscreenImage } from "@/vtt/renderFunctions/renderFullscreenImage";
 // import { renderUnitVision } from "@/vtt/renderFunctions/renderUnitVision";
 import { Coordinates, GridPosition, Size } from "@/vtt/types/types";
 import { Cell } from "@/vtt/classes/Cell";
@@ -11,12 +11,11 @@ import { postMoveUnit } from "@/api/postMoveUnit";
 import { BaseClass } from "@/vtt/classes/BaseClass";
 import { postAddUnit } from "@/api/postAddUnit";
 import { postRemoveUnit } from "@/api/postRemoveUnit";
-import { MapData } from "@/context/mapSettingsContext";
 import { renderWalls } from "../renderFunctions/renderWalls";
-import { renderLineOfSightObjects } from "../renderFunctions/renderLineOfSightObjects";
-import { renderPortals } from "../renderFunctions/renderPortals";
+import { renderDoors } from "../renderFunctions/renderDoors";
 import { renderLightsWithWalls } from "../renderFunctions/renderLightsWithWalls";
 import { timeFunction } from "@/util/timeFunction";
+import { MapData } from "../types/mapData/MapData";
 
 interface VTTProps {
   websocketChannel: string;
@@ -289,7 +288,7 @@ export class VTT extends BaseClass {
    */
 
   private resizeGrid() {
-    this.#backgroundImageSize = {
+    this.#backgroundImageSize = this.mapData?.size || {
       width: this.#backgroundImage?.naturalWidth || 0,
       height: this.#backgroundImage?.naturalHeight || 0,
     };
@@ -374,13 +373,14 @@ export class VTT extends BaseClass {
         const canvas = this.canvas.background;
         ctx.fillStyle = "black";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        renderFullscreenImage(this, "background", this.#backgroundImage!);
+        if (this.#backgroundImage) {
+          ctx.drawImage(this.#backgroundImage, 0, 0);
+        }
+        // renderFullscreenImage(this, "background", this.#backgroundImage!);
         this.#grid.draw();
 
-        renderLineOfSightObjects(this);
         renderWalls(this);
-        renderPortals(this);
+        renderDoors(this);
         timeFunction("Render Lights", () => renderLightsWithWalls(this));
         // this.units.forEach((unit) => renderFogOfWar(unit));
         // renderUnitVision(this);
@@ -446,12 +446,14 @@ export class VTT extends BaseClass {
     this.initialized = true;
     this.#lightingCanvas = null;
     this.#isDebug = window.location.host.includes("localhost");
-    this.#mouseHandler?.destroy();
-    this.#mouseHandler = new MouseHandler(this);
-    this.#mouseHandler.init();
-    this.#keyboardHandler?.destroy();
-    this.#keyboardHandler = new KeyboardHandler(this);
-    this.#keyboardHandler.init();
+    if (this.#mouseHandler === null) {
+      this.#mouseHandler = new MouseHandler(this);
+      this.#mouseHandler.init();
+    }
+    if (this.#keyboardHandler === null) {
+      this.#keyboardHandler = new KeyboardHandler(this);
+      this.#keyboardHandler.init();
+    }
     this.resizeCanvases();
 
     this.#units

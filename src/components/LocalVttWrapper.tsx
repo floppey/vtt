@@ -4,24 +4,35 @@ import { useVtt } from "@/context/vttContext";
 import { useEffect, useRef } from "react";
 import { LeftToolbar } from "./ui/toolbars/LeftToolbar";
 import { RightToolbar } from "./ui/toolbars/RightToolbar";
+import { useUser } from "@/context/userContext";
 
 export const LocalVttWrapper: React.FC = () => {
   const { mapSettings, mapData } = useMapSettings();
   const { vtt } = useVtt();
+  const { color } = useUser();
 
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const foregroundCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (vtt) {
-      if (mapData?.image) {
-        vtt.backgroundImage = `data:image/jpeg;base64,${mapData.image}`;
+      if (mapData?.backgroundImage) {
+        if (mapData.backgroundImageType === "url") {
+          vtt.backgroundImage = `${mapData.backgroundImage}`;
+        } else {
+          vtt.backgroundImage = `data:image/${mapData.backgroundImageType};base64,${mapData.backgroundImage}`;
+        }
       } else if (mapSettings.backgroundImage) {
         vtt.backgroundImage = mapSettings.backgroundImage;
       }
       vtt.init();
     }
-  }, [vtt, mapSettings.backgroundImage, mapData?.image]);
+  }, [
+    vtt,
+    mapSettings.backgroundImage,
+    mapData.backgroundImage,
+    mapData.backgroundImageType,
+  ]);
 
   useEffect(() => {
     if (vtt) {
@@ -42,6 +53,13 @@ export const LocalVttWrapper: React.FC = () => {
       vtt.gridSize = mapSettings.gridSize;
     }
   }, [vtt, mapSettings.gridSize]);
+
+  useEffect(() => {
+    if (vtt && vtt.userColor !== color) {
+      vtt.userColor = color;
+      vtt.render("foreground");
+    }
+  }, [color, vtt]);
 
   return (
     <main>

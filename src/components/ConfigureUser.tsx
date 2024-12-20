@@ -1,20 +1,12 @@
 import { useUser } from "@/context/userContext";
-import { useVtt } from "@/context/vttContext";
-import React, { useEffect } from "react";
+import React from "react";
 
 export const ConfigureUser: React.FC = () => {
   const { color, name, setColor, setUserName } = useUser();
-  const { vtt } = useVtt();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
   };
-
-  useEffect(() => {
-    if (vtt && vtt.userColor !== color) {
-      vtt.userColor = color;
-    }
-  }, [color, vtt]);
 
   return (
     <div id="user-settings">

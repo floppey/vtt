@@ -340,7 +340,10 @@ export default class Unit extends BaseClass {
 
     const { x, y } = position;
 
-    if (this.owner === this.vtt.websocketClientId) {
+    if (
+      this.owner === this.vtt.websocketClientId ||
+      this.vtt.websocketClientId === null
+    ) {
       ctx.fillStyle = this.vtt.userColor;
     } else {
       ctx.fillStyle = "green";
