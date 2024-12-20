@@ -14,8 +14,10 @@ export default function Home() {
     <>
       <div id="new-game">
         <h1>New Game</h1>
+        <Link href="/local">Start new local game</Link>
+        <br />
         {sessionId && (
-          <Link href={`/session/${generateGuid()}`}>Start new game</Link>
+          <Link href={`/session/${sessionId}}`}>Start new coop game</Link>
         )}
       </div>
     </>
