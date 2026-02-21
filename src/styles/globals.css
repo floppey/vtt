@@ -114,6 +114,10 @@ canvas {
   }
 }
 
+#webgl {
+  opacity: 0.5;
+}
+
 input,
 button {
   padding: 0.5rem;

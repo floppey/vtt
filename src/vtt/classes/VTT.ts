@@ -16,6 +16,12 @@ import { renderDoors } from "../renderFunctions/renderDoors";
 import { renderLightsWithWalls } from "../renderFunctions/renderLightsWithWalls";
 import { timeFunction } from "@/util/timeFunction";
 import { MapData } from "../types/mapData/MapData";
+import {
+  initLighting,
+  resizeLighting,
+  destroyLighting,
+  LightingState,
+} from "@/webgl/lighting";
 
 interface VTTProps {
   websocketChannel: string;
@@ -29,6 +35,9 @@ export class VTT extends BaseClass {
   #websocketClientId: string | null;
   #canvas: Record<CanvasKey, HTMLCanvasElement>;
   #ctx: Record<CanvasKey, CanvasRenderingContext2D>;
+  #webglCanvas: HTMLCanvasElement;
+  #webglContext: WebGL2RenderingContext | null;
+  #lightingState: LightingState | null;
   #renderConditions: RenderConditions;
   #hud: HTMLDivElement;
   #gridSize: Size;
@@ -76,6 +85,9 @@ export class VTT extends BaseClass {
         "2d"
       ) as CanvasRenderingContext2D,
     };
+    this.#webglCanvas = document.createElement("canvas");
+    this.#webglContext = this.#webglCanvas.getContext("webgl2");
+    this.#lightingState = null;
     this.#gridSize = { width: 50, height: 50 };
     this.#gridColor = "#989898";
     this.#gridXOffset = 0;
@@ -110,6 +122,10 @@ export class VTT extends BaseClass {
     cancelAnimationFrame(this.#animationFrameId);
     this.#mouseHandler?.destroy();
     this.#keyboardHandler?.destroy();
+    if (this.#lightingState) {
+      destroyLighting(this.#lightingState);
+      this.#lightingState = null;
+    }
     window.removeEventListener("resize", () => this.onResize());
   }
 
@@ -206,6 +222,14 @@ export class VTT extends BaseClass {
     return this.#lightingCanvas;
   }
 
+  get lightingState() {
+    return this.#lightingState;
+  }
+
+  get webglCanvas() {
+    return this.#webglCanvas;
+  }
+
   /**
    * Setters
    */
@@ -234,11 +258,16 @@ export class VTT extends BaseClass {
   }
 
   set backgroundImage(url: string) {
+    console.log("Setting background image", url);
     this.#backgroundImage = new Image();
     this.#backgroundImage.src = url;
     this.#backgroundImageSize = { width: 0, height: 0 };
     this.#loading = true;
     this.#backgroundImage.onload = () => this.onImageLoad();
+  }
+
+  get backgroundImage() {
+    return this.#backgroundImage?.src ?? "";
   }
 
   set gridSize(size: Size) {
@@ -314,6 +343,11 @@ export class VTT extends BaseClass {
       canvas.height = this.#backgroundImageSize.height;
     });
     this.#lightingCanvas = null;
+    this.#webglCanvas.width = this.#backgroundImageSize.width;
+    this.#webglCanvas.height = this.#backgroundImageSize.height;
+    if (this.#lightingState) {
+      resizeLighting(this.#lightingState);
+    }
   }
 
   private onImageLoad() {
@@ -366,8 +400,8 @@ export class VTT extends BaseClass {
     }
 
     if (this.#renderConditions.background) {
+      this.#renderConditions.background = false;
       timeFunction("Render Background", () => {
-        this.#renderConditions.background = false;
         this.clearCanvas("background");
         const ctx = this.#ctx.background;
         const canvas = this.canvas.background;
@@ -385,6 +419,16 @@ export class VTT extends BaseClass {
         // this.units.forEach((unit) => renderFogOfWar(unit));
         // renderUnitVision(this);
       });
+      // timeFunction("Render Background (webgl)", () => {
+      //   const webglState = setup(
+      //     this.#webglCanvas,
+      //     this.#backgroundImage?.src ?? "",
+      //     this.mapData?.walls || [],
+      //     this.units.map((unit) => unit.toLight())
+      //   );
+      //   render(webglState);
+      // });
+      // this.ctx.background.drawImage(this.#webglCanvas, 0, 0);
     }
     if (this.#renderConditions.foreground) {
       timeFunction("Render Foreground", () => {
@@ -442,10 +486,22 @@ export class VTT extends BaseClass {
         ) as CanvasRenderingContext2D;
       }
     });
+    this.#webglCanvas = document.getElementById("webgl") as HTMLCanvasElement;
+    if (!this.#webglCanvas) {
+      canvasFound = false;
+    } else {
+      this.#webglContext = this.#webglCanvas.getContext("webgl2");
+    }
+
     if (!canvasFound) return;
     this.initialized = true;
     this.#lightingCanvas = null;
     this.#isDebug = window.location.host.includes("localhost");
+
+    // Initialize WebGL lighting if WebGL2 context is available
+    if (this.#webglContext) {
+      this.#lightingState = initLighting(this.#webglContext, this.#webglCanvas);
+    }
     if (this.#mouseHandler === null) {
       this.#mouseHandler = new MouseHandler(this);
       this.#mouseHandler.init();

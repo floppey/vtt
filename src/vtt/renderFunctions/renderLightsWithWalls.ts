@@ -2,15 +2,89 @@ import { hexToRgb } from "@/util/hexToRgb";
 import { VTT } from "../classes/VTT";
 import { Coordinates } from "../types/types";
 import { timeFunction } from "@/util/timeFunction";
-import { Light } from "../types/mapData/MapData";
+import { Light, Wall } from "../types/mapData/MapData";
 import { rgbToHex } from "@/util/rgbToHex";
+import { renderLighting } from "@/webgl/lighting";
 
-interface Wall {
+export const renderLightsWithWalls = (vtt: VTT) => {
+  const mapData = vtt.mapData;
+  if (!mapData || (mapData.lights?.length ?? 0) === 0) {
+    return;
+  }
+
+  // Try WebGL path first
+  if (vtt.lightingState) {
+    renderLightsWebGL(vtt);
+    return;
+  }
+
+  // Fallback to Canvas2D
+  if (!vtt.lightingCanvas) {
+    buildLightingCanvas(vtt);
+  }
+
+  timeFunction("compositeFinal", () => {
+    if (vtt.lightingCanvas) {
+      const ctx = vtt.ctx.background;
+      ctx.save();
+
+      ctx.globalCompositeOperation = "multiply";
+      ctx.drawImage(vtt.lightingCanvas, 0, 0);
+
+      ctx.restore();
+    }
+  });
+};
+
+/**
+ * Render lighting using the WebGL pipeline.
+ * Draws into the WebGL canvas, then composites onto the 2D background canvas.
+ */
+const renderLightsWebGL = (vtt: VTT) => {
+  const mapData = vtt.mapData!;
+  const state = vtt.lightingState!;
+
+  // Collect all vision-blocking segments: walls + closed doors
+  const allWalls: Wall[] = [
+    ...mapData.walls,
+    ...mapData.doors
+      .filter((door) => door.blocksVision && !door.isOpen)
+      .map((door) => ({
+        start: door.start,
+        end: door.end,
+        blocksMovement: door.isOpen,
+        blocksVision: door.blocksVision,
+      })),
+  ];
+
+  const ambientLight = mapData.globalLight
+    ? 1.0
+    : mapData.darkness > 0
+      ? 1.0 - mapData.darkness
+      : 0.0;
+
+  timeFunction("renderLightsWebGL", () => {
+    renderLighting(state, allWalls, mapData.lights, ambientLight);
+  });
+
+  // Composite WebGL canvas onto the 2D background canvas
+  timeFunction("compositeWebGL", () => {
+    const ctx = vtt.ctx.background;
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.drawImage(vtt.webglCanvas, 0, 0);
+    ctx.restore();
+  });
+};
+
+// ─── Canvas2D Fallback ──────────────────────────────────────────────────────
+
+interface Canvas2DWall {
   start: Coordinates;
   end: Coordinates;
 }
 
-const wallIntersectsLight = (wall: Wall, light: Light): boolean => {
+const wallIntersectsLight = (wall: Canvas2DWall, light: Light): boolean => {
   const { start, end } = wall;
   const { x, y } = light.position;
   const radius = Math.max(light.bright, light.dim);
@@ -32,9 +106,9 @@ const wallIntersectsLight = (wall: Wall, light: Light): boolean => {
 };
 
 const getSectionOfWallThatIntersectsLight = (
-  wall: Wall,
+  wall: Canvas2DWall,
   light: Light
-): Wall => {
+): Canvas2DWall => {
   const { start, end } = wall;
   const { x, y } = light.position;
   const radius = Math.max(light.bright, light.dim);
@@ -120,24 +194,6 @@ function biasTowardCenter(t: number): number {
   return t * (1 - biasStrength) + quadratic * biasStrength; // Mix linear and quadratic
 }
 
-export const renderLightsWithWalls = (vtt: VTT) => {
-  if (!vtt.lightingCanvas) {
-    buildLightingCanvas(vtt);
-  }
-
-  timeFunction("compositeFinal", () => {
-    if (vtt.lightingCanvas) {
-      const ctx = vtt.ctx.background;
-      ctx.save();
-
-      ctx.globalCompositeOperation = "multiply";
-      ctx.drawImage(vtt.lightingCanvas, 0, 0);
-
-      ctx.restore();
-    }
-  });
-};
-
 const buildLightingCanvas = (vtt: VTT) => {
   const mapData = vtt.mapData;
   if (!mapData || (mapData.lights?.length ?? 0) === 0) {
@@ -218,7 +274,13 @@ const buildLightingCanvas = (vtt: VTT) => {
       color.a = 0;
       gradient.addColorStop(1, rgbToHex(color));
       lightCtx.beginPath();
-      lightCtx.arc(light.position.x, light.position.y, radius, 0, Math.PI * 2);
+      lightCtx.arc(
+        light.position.x,
+        light.position.y,
+        radius,
+        0,
+        Math.PI * 2
+      );
       lightCtx.fill();
     }
     lightCtx.restore();
@@ -229,7 +291,9 @@ const buildLightingCanvas = (vtt: VTT) => {
 
     const intersectingWalls = timeFunction("lightIntersectingWalls", () =>
       mapData.walls
-        .filter((wall) => wall.blocksVision && wallIntersectsLight(wall, light))
+        .filter(
+          (wall) => wall.blocksVision && wallIntersectsLight(wall, light)
+        )
         .map((wall) => getSectionOfWallThatIntersectsLight(wall, light))
     );
 
@@ -265,7 +329,6 @@ const buildLightingCanvas = (vtt: VTT) => {
       shadowCtx.lineTo(wall.end.x, wall.end.y);
       shadowCtx.closePath();
 
-      // shadowCtx.clip();
       shadowCtx.fill();
     });
     shadowCtx.restore();
@@ -283,3 +346,4 @@ const buildLightingCanvas = (vtt: VTT) => {
     });
   });
 };
+

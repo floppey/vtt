@@ -13,6 +13,7 @@ export const LocalVttWrapper: React.FC = () => {
 
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const foregroundCanvasRef = useRef<HTMLCanvasElement>(null);
+  const webGlCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (vtt) {
@@ -22,17 +23,10 @@ export const LocalVttWrapper: React.FC = () => {
         } else {
           vtt.backgroundImage = `data:image/${mapData.backgroundImageType};base64,${mapData.backgroundImage}`;
         }
-      } else if (mapSettings.backgroundImage) {
-        vtt.backgroundImage = mapSettings.backgroundImage;
       }
       vtt.init();
     }
-  }, [
-    vtt,
-    mapSettings.backgroundImage,
-    mapData.backgroundImage,
-    mapData.backgroundImageType,
-  ]);
+  }, [vtt, mapData.backgroundImage, mapData.backgroundImageType]);
 
   useEffect(() => {
     if (vtt) {
@@ -67,6 +61,12 @@ export const LocalVttWrapper: React.FC = () => {
         <canvas
           ref={backgroundCanvasRef}
           id="background"
+          width="800"
+          height="600"
+        ></canvas>
+        <canvas
+          ref={webGlCanvasRef}
+          id="webgl"
           width="800"
           height="600"
         ></canvas>

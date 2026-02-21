@@ -3,6 +3,7 @@ import { get5eDistance } from "@/vtt/util/distance/get5eDistance";
 import { BaseClass } from "@/vtt/classes/BaseClass";
 import { Cell } from "@/vtt/classes/Cell";
 import { VTT } from "@/vtt/classes/VTT";
+import { Light } from "../types/mapData/MapData";
 
 export interface InitUnitProps {
   vtt: VTT;
@@ -395,6 +396,24 @@ export default class Unit extends BaseClass {
       owner: this.#owner,
     };
     return JSON.stringify(createProps);
+  }
+
+  toLight(): Light {
+    const light: Light = {
+      position: this.gridPosition
+        ? {
+            x: this.gridPosition.col * this.vtt.gridSize.width + this.width / 2,
+            y:
+              this.gridPosition.row * this.vtt.gridSize.height +
+              this.height / 2,
+          }
+        : { x: 0, y: 0 },
+      bright: this.visionRadius,
+      dim: this.visionRadius,
+      tintAlpha: 1,
+      tintColor: "#FFFFFF",
+    };
+    return light;
   }
 }
 
