@@ -9,6 +9,8 @@ import { Wall, Light } from "@/vtt/types/mapData/MapData";
 import {
   initLighting,
   renderLighting,
+  renderScene,
+  loadSceneTexture,
   destroyLighting,
   LightingState,
 } from "@/webgl/lighting";
@@ -20,6 +22,7 @@ export default function WebGLDemo() {
   const [ambientLight, setAmbientLight] = useState(0.05);
   const [showWalls, setShowWalls] = useState(true);
   const [showLightMarkers, setShowLightMarkers] = useState(true);
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number }>({ width: 100, height: 100 });
 
   // Use refs for values needed in the animation loop to avoid stale closures
   const settingsRef = useRef({ ambientLight, showWalls, showLightMarkers });
@@ -46,10 +49,15 @@ export default function WebGLDemo() {
     const gl = lightingStateRef.current.gl;
     const { ambientLight, showWalls, showLightMarkers } = settingsRef.current;
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, webglCanvasRef.current.width, webglCanvasRef.current.height);
-    gl.clearColor(0.5, 0.5, 0.5, 1.0); // Medium gray background so lights are visible
-    gl.clear(gl.COLOR_BUFFER_BIT);
+    // Render scene background (or fallback to gray clear)
+    if (lightingStateRef.current.sceneTexture) {
+      renderScene(lightingStateRef.current);
+    } else {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, webglCanvasRef.current.width, webglCanvasRef.current.height);
+      gl.clearColor(0.5, 0.5, 0.5, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    }
 
     renderLighting(
       lightingStateRef.current,
@@ -130,6 +138,23 @@ export default function WebGLDemo() {
     const width = mapData.size.width;
     const height = mapData.size.height;
 
+    // Compute fitted container size and listen for resize
+    const updateContainerSize = () => {
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const mapAspect = width / height;
+      const viewportAspect = vw / vh;
+      if (mapAspect > viewportAspect) {
+        // Map is wider than viewport — constrain by width
+        setContainerSize({ width: vw, height: vw / mapAspect });
+      } else {
+        // Map is taller than viewport — constrain by height
+        setContainerSize({ width: vh * mapAspect, height: vh });
+      }
+    };
+    updateContainerSize();
+    window.addEventListener('resize', updateContainerSize);
+
     if (webglCanvasRef.current && overlayCanvasRef.current) {
       webglCanvasRef.current.width = width;
       webglCanvasRef.current.height = height;
@@ -150,6 +175,15 @@ export default function WebGLDemo() {
       return;
     }
 
+    // Load scene background image
+    const sceneImage = new Image();
+    sceneImage.onload = () => {
+      if (lightingStateRef.current) {
+        loadSceneTexture(lightingStateRef.current, sceneImage);
+      }
+    };
+    sceneImage.src = "/img/demo_medium.jpg";
+
     const animate = (_time: number) => {
       const now = performance.now();
       while (frameTimesRef.current.length > 0 && frameTimesRef.current[0] <= now - 1000) {
@@ -166,6 +200,7 @@ export default function WebGLDemo() {
 
     return () => {
       cancelAnimationFrame(requestRef.current);
+      window.removeEventListener('resize', updateContainerSize);
       if (lightingStateRef.current) {
         destroyLighting(lightingStateRef.current);
       }
@@ -278,7 +313,11 @@ export default function WebGLDemo() {
       justifyContent: "center",
       alignItems: "center"
     }}>
-      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <div style={{
+        position: "relative",
+        width: containerSize.width,
+        height: containerSize.height,
+      }}>
         <canvas
           ref={webglCanvasRef}
           id="webgl-canvas"
@@ -288,7 +327,6 @@ export default function WebGLDemo() {
             left: 0,
             width: "100%",
             height: "100%",
-            objectFit: "contain",
             pointerEvents: "none",
           }}
         />
@@ -306,7 +344,6 @@ export default function WebGLDemo() {
             left: 0,
             width: "100%",
             height: "100%",
-            objectFit: "contain",
             pointerEvents: "auto",
             cursor: "crosshair",
           }}
