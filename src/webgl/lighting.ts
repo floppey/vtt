@@ -227,11 +227,23 @@ function createFBO(
 // ─── Shadow Geometry ─────────────────────────────────────────────────────────
 
 /**
- * For a given light and wall, compute the shadow volume quad.
- * Projects the two wall endpoints away from the light to create a trapezoid.
- * Returns 6 vertices (2 triangles) in pixel coordinates.
+ * For a given light and wall, compute the shadow volume geometry.
+ *
+ * A simple 4-vertex trapezoid (A, B, FA, FB) is insufficient because the
+ * far edge of the shadow is an arc, not a straight line. When the wall
+ * subtends a large angle from the light's perspective (e.g., a long wall
+ * near the light), a straight far edge leaves triangular gaps where light
+ * bleeds through.
+ *
+ * Instead, we sample multiple points along the wall, project each one
+ * radially away from the light, and build a triangle strip connecting
+ * wall sample points to their projected counterparts. This creates a
+ * proper fan-shaped shadow volume.
+ *
+ * The number of sample points is adaptive based on the angular span of
+ * the wall from the light's perspective — wider angles get more points.
  */
-function computeShadowQuad(
+function computeShadowGeometry(
   light: Light,
   wall: { start: Coordinates; end: Coordinates },
   shadowLength: number
@@ -239,35 +251,63 @@ function computeShadowQuad(
   const lx = light.position.x;
   const ly = light.position.y;
 
-  // Wall endpoints
   const ax = wall.start.x;
   const ay = wall.start.y;
   const bx = wall.end.x;
   const by = wall.end.y;
 
-  // Project wall endpoints away from light
-  const dax = ax - lx;
-  const day = ay - ly;
-  const daLen = Math.sqrt(dax * dax + day * day);
-  const fax = ax + (dax / daLen) * shadowLength;
-  const fay = ay + (day / daLen) * shadowLength;
+  // Compute angular span of the wall from the light's perspective
+  const angleA = Math.atan2(ay - ly, ax - lx);
+  const angleB = Math.atan2(by - ly, bx - lx);
+  let angleDiff = Math.abs(angleB - angleA);
+  if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
 
-  const dbx = bx - lx;
-  const dby = by - ly;
-  const dbLen = Math.sqrt(dbx * dbx + dby * dby);
-  const fbx = bx + (dbx / dbLen) * shadowLength;
-  const fby = by + (dby / dbLen) * shadowLength;
+  // Adaptive sample count: more points for larger angular spans
+  // Minimum 2 (endpoints only), scale up for wide angles
+  const numSegments = Math.max(2, Math.ceil(angleDiff / (Math.PI / 32)));
 
-  // Two triangles forming the shadow trapezoid: A, B, FA, and B, FA, FB
-  // prettier-ignore
-  return new Float32Array([
-    ax, ay,
-    bx, by,
-    fax, fay,
-    bx, by,
-    fax, fay,
-    fbx, fby,
-  ]);
+  // Generate sample points along the wall and their projections
+  const wallPoints: { wx: number; wy: number; px: number; py: number }[] = [];
+
+  for (let i = 0; i <= numSegments; i++) {
+    const t = i / numSegments;
+    const wx = ax + t * (bx - ax);
+    const wy = ay + t * (by - ay);
+
+    // Project this point away from the light
+    const dx = wx - lx;
+    const dy = wy - ly;
+    const len = Math.sqrt(dx * dx + dy * dy);
+
+    if (len < 0.001) continue; // Skip degenerate case (point on light)
+
+    const px = wx + (dx / len) * shadowLength;
+    const py = wy + (dy / len) * shadowLength;
+
+    wallPoints.push({ wx, wy, px, py });
+  }
+
+  if (wallPoints.length < 2) {
+    return new Float32Array(0);
+  }
+
+  // Build triangle strip as individual triangles.
+  // For each consecutive pair of sample points (i, i+1), create 2 triangles:
+  //   Triangle 1: wall[i], wall[i+1], proj[i]
+  //   Triangle 2: wall[i+1], proj[i], proj[i+1]
+  const triangles: number[] = [];
+
+  for (let i = 0; i < wallPoints.length - 1; i++) {
+    const c = wallPoints[i];
+    const n = wallPoints[i + 1];
+
+    // Triangle 1: current wall point, next wall point, current projected point
+    triangles.push(c.wx, c.wy, n.wx, n.wy, c.px, c.py);
+    // Triangle 2: next wall point, current projected point, next projected point
+    triangles.push(n.wx, n.wy, c.px, c.py, n.px, n.py);
+  }
+
+  return new Float32Array(triangles);
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -493,9 +533,9 @@ export function renderLighting(
 
       if (distToLight > radius + wallHalfLen + 10) continue;
 
-      const quad = computeShadowQuad(light, wall, shadowLength);
-      for (let i = 0; i < quad.length; i++) {
-        shadowVerts.push(quad[i]);
+      const geo = computeShadowGeometry(light, wall, shadowLength);
+      for (let i = 0; i < geo.length; i++) {
+        shadowVerts.push(geo[i]);
       }
     }
 
