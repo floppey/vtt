@@ -3,7 +3,8 @@ import { get5eDistance } from "@/vtt/util/distance/get5eDistance";
 import { BaseClass } from "@/vtt/classes/BaseClass";
 import { Cell } from "@/vtt/classes/Cell";
 import { VTT } from "@/vtt/classes/VTT";
-import { Light } from "../types/mapData/MapData";
+import { Light, Wall } from "../types/mapData/MapData";
+import { computeVisibilityPolygon } from "@/vtt/util/computeVisibilityPolygon";
 
 export interface InitUnitProps {
   vtt: VTT;
@@ -26,6 +27,7 @@ export default class Unit extends BaseClass {
   #tempPosition: Coordinates | null = null;
   #tempPositions: Coordinates[] = [];
   #exploredAreas: GridPosition[] = [];
+  #exploredMask: HTMLCanvasElement | null = null;
 
   constructor({
     vtt,
@@ -64,6 +66,56 @@ export default class Unit extends BaseClass {
     return this.#exploredAreas;
   }
 
+  get exploredMask(): HTMLCanvasElement | null {
+    return this.#exploredMask;
+  }
+
+  /**
+   * Invalidate the explored mask so it will be rebuilt on next access.
+   * Call when map data, grid size, or walls change.
+   */
+  clearExploredMask(): void {
+    this.#exploredMask = null;
+  }
+
+  /**
+   * Rebuild the entire explored mask from scratch using all explored areas.
+   * Used when the mask is invalidated (map change, resize, etc.).
+   */
+  rebuildExploredMask(): void {
+    this.#exploredMask = null;
+    if (this.#exploredAreas.length === 0) return;
+    const mapSize = this.#vtt.backgroundImageSize;
+    if (mapSize.width === 0 || mapSize.height === 0) return;
+
+    const mask = document.createElement("canvas");
+    mask.width = mapSize.width;
+    mask.height = mapSize.height;
+    const ctx = mask.getContext("2d");
+    if (!ctx) return;
+
+    const walls = this.collectVisionWalls();
+    const visionRadiusPx = this.#visionRadius * this.#vtt.gridSize.width;
+
+    ctx.fillStyle = "white";
+    for (const area of this.#exploredAreas) {
+      const centerX = (area.col + 0.5) * this.#vtt.gridSize.width;
+      const centerY = (area.row + 0.5) * this.#vtt.gridSize.height;
+      const origin = { x: centerX, y: centerY };
+      const polygon = computeVisibilityPolygon(origin, walls, visionRadiusPx);
+      if (polygon.length >= 3) {
+        ctx.beginPath();
+        ctx.moveTo(polygon[0].x, polygon[0].y);
+        for (let i = 1; i < polygon.length; i++) {
+          ctx.lineTo(polygon[i].x, polygon[i].y);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    this.#exploredMask = mask;
+
+  }
   get gridPosition(): GridPosition | null {
     return this.#gridPosition;
   }
@@ -87,12 +139,12 @@ export default class Unit extends BaseClass {
       return;
     }
     this.#gridPosition = { row: cell.row, col: cell.col };
-    if (
-      !this.#exploredAreas.some(
-        (area) => area.row === cell.row && area.col === cell.col
-      )
-    ) {
+    const isNew = !this.#exploredAreas.some(
+      (area) => area.row === cell.row && area.col === cell.col
+    );
+    if (isNew) {
       this.#exploredAreas.push(this.#gridPosition);
+      this.updateExploredMask();
     }
   }
 
@@ -383,6 +435,62 @@ export default class Unit extends BaseClass {
     );
   }
 
+  /**
+   * Collect all vision-blocking wall segments from the current map data.
+   */
+  private collectVisionWalls(): Wall[] {
+    const mapData = this.#vtt.mapData;
+    if (!mapData) return [];
+    return [
+      ...mapData.walls.filter((w) => w.blocksVision),
+      ...mapData.doors
+        .filter((door) => door.blocksVision && !door.isOpen)
+        .map((door) => ({
+          start: door.start,
+          end: door.end,
+          blocksMovement: true,
+          blocksVision: door.blocksVision,
+        })),
+    ];
+  }
+
+  /**
+   * Update the explored mask by adding the visibility polygon from the current position.
+   * Called when the unit moves to a new cell.
+   */
+  private updateExploredMask(): void {
+    if (!this.#gridPosition) return;
+    const mapSize = this.#vtt.backgroundImageSize;
+    if (mapSize.width === 0 || mapSize.height === 0) return;
+
+    // Create mask if it doesn't exist yet
+    if (!this.#exploredMask) {
+      this.#exploredMask = document.createElement("canvas");
+      this.#exploredMask.width = mapSize.width;
+      this.#exploredMask.height = mapSize.height;
+    }
+
+    const ctx = this.#exploredMask.getContext("2d");
+    if (!ctx) return;
+
+    const walls = this.collectVisionWalls();
+    const visionRadiusPx = this.#visionRadius * this.#vtt.gridSize.width;
+    const centerX = (this.#gridPosition.col + 0.5) * this.#vtt.gridSize.width;
+    const centerY = (this.#gridPosition.row + 0.5) * this.#vtt.gridSize.height;
+    const origin = { x: centerX, y: centerY };
+
+    const polygon = computeVisibilityPolygon(origin, walls, visionRadiusPx);
+    if (polygon.length >= 3) {
+      ctx.fillStyle = "white";
+      ctx.beginPath();
+      ctx.moveTo(polygon[0].x, polygon[0].y);
+      for (let i = 1; i < polygon.length; i++) {
+        ctx.lineTo(polygon[i].x, polygon[i].y);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
   toString(): string {
     const createProps: Omit<CreateUnitProps, "vtt"> = {
       name: this.#name,
