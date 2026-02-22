@@ -85,19 +85,19 @@ function collectAllLights(vtt: VTT): Light[] {
 }
 
 /**
- * Render unit vision with wall occlusion and lit-area extension (CPU-based).
+ * Render unit vision with wall occlusion and light-extended area (CPU-based).
  *
  * Algorithm:
  * 1. Create a fog overlay canvas filled with semi-transparent black.
  * 2. For each unit:
- *    a. Compute wall-occluded visibility polygon at visionRadius (base dark vision).
- *    b. Cut out the base vision polygon from the fog (destination-out).
- *    c. Compute a full LOS polygon (wall-occluded, unlimited radius).
- *    d. For each light source visible within the full LOS:
- *       - Compute the light's own wall-occluded visibility polygon.
- *       - The intersection of (light polygon) ∩ (full LOS polygon) represents
- *         lit areas the unit can see.
- *    e. Draw these lit areas minus the base vision polygon onto the fog (destination-out).
+ *    a. Compute a full LOS polygon (wall-occluded, map-diagonal radius) to determine
+ *       what the unit has direct line-of-sight to.
+ *    b. Filter lights whose positions fall within the full LOS polygon.
+ *    c. Build a "vision mask" = darkvision circle ∪ all visible light circles.
+ *    d. The visible area = full LOS polygon ∩ vision mask.
+ *       (i.e., the unit sees any point it has LOS to, as long as the point is
+ *       within darkvision range OR within a visible light's radius.)
+ *    e. Cut out the visible area from the fog (destination-out).
  * 3. Composite the fog onto the background canvas.
  */
 export const renderUnitVision = (vtt: VTT) => {
@@ -134,21 +134,7 @@ export const renderUnitVision = (vtt: VTT) => {
     const origin: Coordinates = { x: centerX, y: centerY };
     const visionRadiusPx = unit.visionRadius * vtt.gridSize.width;
 
-    // --- Step A: Base vision polygon (clipped to visionRadius) ---
-    const basePolygon = computeVisibilityPolygon(origin, walls, visionRadiusPx);
-
-    // Cut out base vision from fog
-    fogCtx.save();
-    fogCtx.globalCompositeOperation = "destination-out";
-    fogCtx.fillStyle = "rgba(0, 0, 0, 1)";
-    traceVisibilityPolygon(fogCtx, basePolygon);
-    fogCtx.fill();
-    fogCtx.restore();
-
-    // --- Step B: Extended vision in lit areas (CPU-based) ---
-    if (allLights.length === 0) continue;
-
-    // Compute full LOS polygon (no radius limit, only wall occlusion)
+    // Compute full LOS polygon (wall-occluded, map-diagonal range)
     const fullLOSPolygon = computeVisibilityPolygon(
       origin,
       walls,
@@ -156,69 +142,53 @@ export const renderUnitVision = (vtt: VTT) => {
     );
     if (fullLOSPolygon.length < 3) continue;
 
-    // Create a mask canvas for the lit extension area
-    const litMaskCanvas = document.createElement("canvas");
-    litMaskCanvas.width = mapWidth;
-    litMaskCanvas.height = mapHeight;
-    const litMaskCtx = litMaskCanvas.getContext("2d");
-    if (!litMaskCtx) continue;
-
-    // For each light source, check if the unit can see it (light position
-    // is within the unit's full LOS polygon). If so, compute the light's
-    // wall-occluded visibility polygon and draw it as a lit area.
-    let hasLitAreas = false;
-
-    for (const light of allLights) {
+    // Filter visible lights: only those whose center is within the unit's LOS
+    const visibleLights = allLights.filter((light) => {
       const lightRadiusPx = Math.max(light.bright, light.dim);
-      if (lightRadiusPx <= 0) continue;
+      if (lightRadiusPx <= 0) return false;
+      return isPointInPolygon(light.position, fullLOSPolygon);
+    });
 
-      // Skip lights that are too far away to matter (optimization)
-      const dx = light.position.x - origin.x;
-      const dy = light.position.y - origin.y;
-      const distToLight = Math.sqrt(dx * dx + dy * dy);
-      if (distToLight > maxLOSRadius + lightRadiusPx) continue;
+    // Build the visible area using canvas compositing:
+    // visible area = full LOS polygon ∩ (darkvision circle ∪ light circles)
+    const visionCanvas = document.createElement("canvas");
+    visionCanvas.width = mapWidth;
+    visionCanvas.height = mapHeight;
+    const visionCtx = visionCanvas.getContext("2d");
+    if (!visionCtx) continue;
 
-      // Check if the light's position is visible to the unit
-      // (i.e., no walls between unit and light)
-      if (!isPointInPolygon(light.position, fullLOSPolygon)) continue;
+    // Step 1: Draw the vision mask (darkvision circle + light circles)
+    visionCtx.fillStyle = "white";
 
-      // Compute the light's own wall-occluded visibility polygon
-      const lightPolygon = computeVisibilityPolygon(
-        light.position,
-        walls,
-        lightRadiusPx
+    // Darkvision circle
+    visionCtx.beginPath();
+    visionCtx.arc(origin.x, origin.y, visionRadiusPx, 0, Math.PI * 2);
+    visionCtx.fill();
+
+    // Add each visible light's area
+    for (const light of visibleLights) {
+      const lightRadiusPx = Math.max(light.bright, light.dim);
+      visionCtx.beginPath();
+      visionCtx.arc(
+        light.position.x,
+        light.position.y,
+        lightRadiusPx,
+        0,
+        Math.PI * 2
       );
-      if (lightPolygon.length < 3) continue;
-
-      // Draw the light's visibility polygon onto the lit mask.
-      // This represents the area illuminated by this light source.
-      litMaskCtx.fillStyle = "white";
-      traceVisibilityPolygon(litMaskCtx, lightPolygon);
-      litMaskCtx.fill();
-      hasLitAreas = true;
+      visionCtx.fill();
     }
 
-    if (!hasLitAreas) continue;
+    // Step 2: Intersect with full LOS polygon.
+    // Keep only the parts of the vision mask that are inside the LOS polygon.
+    visionCtx.globalCompositeOperation = "destination-in";
+    traceVisibilityPolygon(visionCtx, fullLOSPolygon);
+    visionCtx.fill();
 
-    // Intersect lit areas with the unit's full LOS polygon:
-    // Only keep lit areas that the unit can actually see (no walls between).
-    litMaskCtx.globalCompositeOperation = "destination-in";
-    litMaskCtx.fillStyle = "white";
-    traceVisibilityPolygon(litMaskCtx, fullLOSPolygon);
-    litMaskCtx.fill();
-
-    // Subtract the base vision polygon (already revealed in Step A)
-    litMaskCtx.globalCompositeOperation = "destination-out";
-    litMaskCtx.fillStyle = "white";
-    traceVisibilityPolygon(litMaskCtx, basePolygon);
-    litMaskCtx.fill();
-
-    // litMaskCanvas now contains white only where:
-    // (within full LOS) AND (outside base vision) AND (illuminated by a light)
-    // Use it to cut additional area from the fog
+    // Step 3: Use the resulting vision shape to cut out fog
     fogCtx.save();
     fogCtx.globalCompositeOperation = "destination-out";
-    fogCtx.drawImage(litMaskCanvas, 0, 0);
+    fogCtx.drawImage(visionCanvas, 0, 0);
     fogCtx.restore();
   }
 
