@@ -19,6 +19,7 @@ export const VttWrapper: React.FC<VttWrapperProps> = ({ channel }) => {
 
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const foregroundCanvasRef = useRef<HTMLCanvasElement>(null);
+  const webGlCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (vtt) {
@@ -73,6 +74,12 @@ export const VttWrapper: React.FC<VttWrapperProps> = ({ channel }) => {
         <canvas
           ref={backgroundCanvasRef}
           id="background"
+          width="800"
+          height="600"
+        ></canvas>
+        <canvas
+          ref={webGlCanvasRef}
+          id="webgl"
           width="800"
           height="600"
         ></canvas>

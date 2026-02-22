@@ -8,7 +8,14 @@ import { renderLighting } from "@/webgl/lighting";
 
 export const renderLightsWithWalls = (vtt: VTT) => {
   const mapData = vtt.mapData;
-  if (!mapData || (mapData.lights?.length ?? 0) === 0) {
+  if (!mapData) {
+    return;
+  }
+
+  // Need at least map lights or units with vision to render lighting
+  const hasMapLights = (mapData.lights?.length ?? 0) > 0;
+  const hasUnitLights = vtt.units.some((unit) => unit.gridPosition !== null);
+  if (!hasMapLights && !hasUnitLights) {
     return;
   }
 
@@ -43,31 +50,38 @@ export const renderLightsWithWalls = (vtt: VTT) => {
 const renderLightsWebGL = (vtt: VTT) => {
   const mapData = vtt.mapData!;
   const state = vtt.lightingState!;
+  // Only re-render lighting when lights/walls/units have changed
+  if (vtt.lightingDirty) {
+    // Collect all vision-blocking segments: walls + closed doors
+    const allWalls: Wall[] = [
+      ...mapData.walls,
+      ...mapData.doors
+        .filter((door) => door.blocksVision && !door.isOpen)
+        .map((door) => ({
+          start: door.start,
+          end: door.end,
+          blocksMovement: door.isOpen,
+          blocksVision: door.blocksVision,
+        })),
+    ];
+    const ambientLight = mapData.globalLight
+      ? 1.0
+      : mapData.darkness > 0
+        ? 1.0 - mapData.darkness
+        : 0.0;
+    // Combine map lights with unit lights
+    const unitLights = vtt.units
+      .filter((unit) => unit.gridPosition !== null)
+      .map((unit) => unit.toLight());
+    const allLights = [...mapData.lights, ...unitLights];
+    timeFunction("renderLightsWebGL", () => {
+      renderLighting(state, allWalls, allLights, ambientLight);
+    });
 
-  // Collect all vision-blocking segments: walls + closed doors
-  const allWalls: Wall[] = [
-    ...mapData.walls,
-    ...mapData.doors
-      .filter((door) => door.blocksVision && !door.isOpen)
-      .map((door) => ({
-        start: door.start,
-        end: door.end,
-        blocksMovement: door.isOpen,
-        blocksVision: door.blocksVision,
-      })),
-  ];
+    vtt.lightingDirty = false;
+  }
 
-  const ambientLight = mapData.globalLight
-    ? 1.0
-    : mapData.darkness > 0
-      ? 1.0 - mapData.darkness
-      : 0.0;
-
-  timeFunction("renderLightsWebGL", () => {
-    renderLighting(state, allWalls, mapData.lights, ambientLight);
-  });
-
-  // Composite WebGL canvas onto the 2D background canvas
+  // Always composite WebGL canvas onto the 2D background canvas
   timeFunction("compositeWebGL", () => {
     const ctx = vtt.ctx.background;
     ctx.save();

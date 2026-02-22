@@ -4,7 +4,7 @@ import { hexToRgb } from "@/util/hexToRgb";
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 /** Resolution of the 1D shadow map (pixels = angle slices from -π to +π) */
-const SHADOW_MAP_SIZE = 1024;
+const DEFAULT_SHADOW_MAP_SIZE = 1024;
 
 const TWO_PI = Math.PI * 2;
 
@@ -306,6 +306,7 @@ export interface LightingState {
   wallBuffer: WebGLBuffer;
   supportsFloatBlend: boolean;
   sceneTexture: WebGLTexture | null;
+  shadowMapSize: number;
 }
 
 // ─── GL Helpers ──────────────────────────────────────────────────────────────
@@ -465,7 +466,8 @@ function createShadowMapFBO(
  */
 export function initLighting(
   gl: WebGL2RenderingContext,
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
+  shadowMapSize: number = DEFAULT_SHADOW_MAP_SIZE
 ): LightingState {
   // Required for rendering to R32F textures
   gl.getExtension("EXT_color_buffer_float");
@@ -522,7 +524,7 @@ export function initLighting(
   // Framebuffers
   const perLightFBO = createFBO(gl, canvas.width, canvas.height);
   const accumulationFBO = createFBO(gl, canvas.width, canvas.height);
-  const shadowMapFBO = createShadowMapFBO(gl, SHADOW_MAP_SIZE);
+  const shadowMapFBO = createShadowMapFBO(gl, shadowMapSize);
 
   // Quad buffer (updated per-light)
   const quadBuffer = gl.createBuffer();
@@ -559,6 +561,7 @@ export function initLighting(
     supportsFloatBlend,
     sceneProgram,
     sceneTexture: null,
+    shadowMapSize,
   };
 }
 
@@ -606,7 +609,8 @@ export function resizeLighting(state: LightingState): void {
 function buildWallVBO(
   walls: Wall[],
   lightX: number,
-  lightY: number
+  lightY: number,
+  shadowMapSize: number
 ): { data: Float32Array; vertexCount: number } {
   const floatsPerVertex = 6; // pos(2) + wallA(2) + wallB(2)
   const verticesPerQuad = 6; // 2 triangles
@@ -626,7 +630,7 @@ function buildWallVBO(
     const by = -(wall.end.y - lightY);
 
     // Compute angular range(s) for this wall
-    const ranges = wallAngleRanges(ax, ay, bx, by, SHADOW_MAP_SIZE);
+    const ranges = wallAngleRanges(ax, ay, bx, by, shadowMapSize);
 
     for (const range of ranges) {
       // Convert angle range to NDC x coordinates
@@ -733,7 +737,7 @@ export function renderLighting(
 
     // ── 2a: Generate 1D shadow map ──
     gl.bindFramebuffer(gl.FRAMEBUFFER, state.shadowMapFBO.framebuffer);
-    gl.viewport(0, 0, SHADOW_MAP_SIZE, 1);
+    gl.viewport(0, 0, state.shadowMapSize, 1);
 
     // Clear to 1.0 (= max distance normalized, no wall)
     gl.clearColor(1.0, 0.0, 0.0, 1.0);
@@ -744,7 +748,8 @@ export function renderLighting(
       const { data: wallData, vertexCount } = buildWallVBO(
         visionWalls,
         light.position.x,
-        light.position.y
+        light.position.y,
+        state.shadowMapSize
       );
 
       if (vertexCount > 0) {
@@ -754,7 +759,7 @@ export function renderLighting(
         gl.useProgram(state.shadowMapProgram.program);
         gl.uniform1f(
           state.shadowMapProgram.uniforms["u_texWidth"]!,
-          SHADOW_MAP_SIZE
+          state.shadowMapSize
         );
         gl.uniform1f(
           state.shadowMapProgram.uniforms["u_maxDistance"]!,

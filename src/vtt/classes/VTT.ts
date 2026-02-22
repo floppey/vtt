@@ -1,8 +1,7 @@
 import { KeyboardHandler } from "@/vtt/input/KeyboardHandler";
 import { MouseHandler } from "@/vtt/input/MouseHandler";
-// import { renderFogOfWar } from "@/vtt/renderFunctions/renderFogOfWar";
-// import { renderFullscreenImage } from "@/vtt/renderFunctions/renderFullscreenImage";
-// import { renderUnitVision } from "@/vtt/renderFunctions/renderUnitVision";
+import { renderFogOfWar } from "@/vtt/renderFunctions/renderFogOfWar";
+import { renderUnitVision } from "@/vtt/renderFunctions/renderUnitVision";
 import { Coordinates, GridPosition, Size } from "@/vtt/types/types";
 import { Cell } from "@/vtt/classes/Cell";
 import { Grid } from "@/vtt/classes/Grid";
@@ -20,6 +19,7 @@ import {
   initLighting,
   resizeLighting,
   destroyLighting,
+  loadSceneTexture,
   LightingState,
 } from "@/webgl/lighting";
 
@@ -61,6 +61,8 @@ export class VTT extends BaseClass {
   #selectedUnits: Unit[] = [];
   #mapData: MapData | null;
   #lightingCanvas: OffscreenCanvas | null;
+
+  #lightingDirty: boolean;
 
   userColor: string;
 
@@ -112,6 +114,7 @@ export class VTT extends BaseClass {
     this.#grid = new Grid(this, 10, 10);
     this.userColor = "#00FF00";
     this.#lightingCanvas = null;
+    this.#lightingDirty = true;
 
     this.init();
 
@@ -226,6 +229,15 @@ export class VTT extends BaseClass {
     return this.#lightingState;
   }
 
+
+  get lightingDirty() {
+    return this.#lightingDirty;
+  }
+
+  set lightingDirty(dirty: boolean) {
+    this.#lightingDirty = dirty;
+  }
+
   get webglCanvas() {
     return this.#webglCanvas;
   }
@@ -306,6 +318,7 @@ export class VTT extends BaseClass {
 
   set mapData(data: MapData | null) {
     this.#mapData = data;
+    this.#lightingDirty = true;
   }
 
   set lightingCanvas(canvas: OffscreenCanvas | null) {
@@ -343,6 +356,7 @@ export class VTT extends BaseClass {
       canvas.height = this.#backgroundImageSize.height;
     });
     this.#lightingCanvas = null;
+    this.#lightingDirty = true;
     this.#webglCanvas.width = this.#backgroundImageSize.width;
     this.#webglCanvas.height = this.#backgroundImageSize.height;
     if (this.#lightingState) {
@@ -354,6 +368,9 @@ export class VTT extends BaseClass {
     this.#zoom = 1;
     this.resizeGrid();
     this.#loading = false;
+    if (this.#lightingState && this.#backgroundImage) {
+      loadSceneTexture(this.#lightingState, this.#backgroundImage);
+    }
   }
 
   private onResize() {
@@ -416,8 +433,8 @@ export class VTT extends BaseClass {
         renderWalls(this);
         renderDoors(this);
         timeFunction("Render Lights", () => renderLightsWithWalls(this));
-        // this.units.forEach((unit) => renderFogOfWar(unit));
-        // renderUnitVision(this);
+        this.units.forEach((unit) => renderFogOfWar(unit));
+        renderUnitVision(this);
       });
       // timeFunction("Render Background (webgl)", () => {
       //   const webglState = setup(
@@ -499,6 +516,10 @@ export class VTT extends BaseClass {
     this.#isDebug = window.location.host.includes("localhost");
 
     // Initialize WebGL lighting if WebGL2 context is available
+    if (this.#lightingState) {
+      destroyLighting(this.#lightingState);
+      this.#lightingState = null;
+    }
     if (this.#webglContext) {
       this.#lightingState = initLighting(this.#webglContext, this.#webglCanvas);
     }
@@ -609,6 +630,7 @@ export class VTT extends BaseClass {
     }
     unit.tempPosition = null;
     unit.cell = to;
+    this.#lightingDirty = true;
     this.renderAll();
 
     if (broadcast && this.websocketChannel && this.websocketClientId) {
