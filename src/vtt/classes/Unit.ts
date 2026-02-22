@@ -91,30 +91,30 @@ export default class Unit extends BaseClass {
     const mask = document.createElement("canvas");
     mask.width = mapSize.width;
     mask.height = mapSize.height;
-    const ctx = mask.getContext("2d");
-    if (!ctx) return;
-
+    const maskCtx = mask.getContext("2d");
+    if (!maskCtx) return;
     const walls = this.collectVisionWalls();
     const visionRadiusPx = this.#visionRadius * this.#vtt.gridSize.width;
-
-    ctx.fillStyle = "white";
+    const maxLOSRadius = Math.sqrt(
+      mapSize.width * mapSize.width + mapSize.height * mapSize.height
+    );
+    const allLights = this.collectAllLights();
     for (const area of this.#exploredAreas) {
       const centerX = (area.col + 0.5) * this.#vtt.gridSize.width;
       const centerY = (area.row + 0.5) * this.#vtt.gridSize.height;
       const origin = { x: centerX, y: centerY };
-      const polygon = computeVisibilityPolygon(origin, walls, visionRadiusPx);
-      if (polygon.length >= 3) {
-        ctx.beginPath();
-        ctx.moveTo(polygon[0].x, polygon[0].y);
-        for (let i = 1; i < polygon.length; i++) {
-          ctx.lineTo(polygon[i].x, polygon[i].y);
-        }
-        ctx.closePath();
-        ctx.fill();
-      }
+      this.paintExploredVision(
+        maskCtx,
+        origin,
+        walls,
+        visionRadiusPx,
+        maxLOSRadius,
+        allLights,
+        mapSize.width,
+        mapSize.height
+      );
     }
     this.#exploredMask = mask;
-
   }
   get gridPosition(): GridPosition | null {
     return this.#gridPosition;
@@ -455,41 +455,158 @@ export default class Unit extends BaseClass {
   }
 
   /**
-   * Update the explored mask by adding the visibility polygon from the current position.
+   * Update the explored mask by adding the light-aware visible area from the current position.
    * Called when the unit moves to a new cell.
    */
   private updateExploredMask(): void {
     if (!this.#gridPosition) return;
     const mapSize = this.#vtt.backgroundImageSize;
     if (mapSize.width === 0 || mapSize.height === 0) return;
-
-    // Create mask if it doesn't exist yet
     if (!this.#exploredMask) {
       this.#exploredMask = document.createElement("canvas");
       this.#exploredMask.width = mapSize.width;
       this.#exploredMask.height = mapSize.height;
     }
-
     const ctx = this.#exploredMask.getContext("2d");
     if (!ctx) return;
-
-    const walls = this.collectVisionWalls();
     const visionRadiusPx = this.#visionRadius * this.#vtt.gridSize.width;
+    const maxLOSRadius = Math.sqrt(
+      mapSize.width * mapSize.width + mapSize.height * mapSize.height
+    );
+    const allLights = this.collectAllLights();
+    const walls = this.collectVisionWalls();
     const centerX = (this.#gridPosition.col + 0.5) * this.#vtt.gridSize.width;
     const centerY = (this.#gridPosition.row + 0.5) * this.#vtt.gridSize.height;
     const origin = { x: centerX, y: centerY };
+    this.paintExploredVision(
+      ctx,
+      origin,
+      walls,
+      visionRadiusPx,
+      maxLOSRadius,
+      allLights,
+      mapSize.width,
+      mapSize.height
+    );
+  }
 
-    const polygon = computeVisibilityPolygon(origin, walls, visionRadiusPx);
-    if (polygon.length >= 3) {
-      ctx.fillStyle = "white";
-      ctx.beginPath();
-      ctx.moveTo(polygon[0].x, polygon[0].y);
-      for (let i = 1; i < polygon.length; i++) {
-        ctx.lineTo(polygon[i].x, polygon[i].y);
-      }
-      ctx.closePath();
-      ctx.fill();
+  /**
+   * Paint the light-aware visible area from a given origin onto a mask canvas.
+   * Uses the same algorithm as renderUnitVision:
+   *   visible area = full LOS polygon ∩ (darkvision circle ∪ visible light circles)
+   */
+  private paintExploredVision(
+    maskCtx: CanvasRenderingContext2D,
+    origin: Coordinates,
+    walls: Wall[],
+    visionRadiusPx: number,
+    maxLOSRadius: number,
+    allLights: Light[],
+    mapWidth: number,
+    mapHeight: number
+  ): void {
+    // Compute full LOS polygon (wall-occluded, map-diagonal range)
+    const fullLOSPolygon = computeVisibilityPolygon(
+      origin,
+      walls,
+      maxLOSRadius
+    );
+    if (fullLOSPolygon.length < 3) return;
+
+    // Filter visible lights: only those whose center is within the unit's LOS
+    const visibleLights = allLights.filter((light) => {
+      const lightRadiusPx = Math.max(light.bright, light.dim);
+      if (lightRadiusPx <= 0) return false;
+      return this.isPointInPolygon(light.position, fullLOSPolygon);
+    });
+
+    // Build visible area on a temporary canvas using compositing:
+    // visible area = full LOS polygon ∩ (darkvision circle ∪ light circles)
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = mapWidth;
+    tempCanvas.height = mapHeight;
+    const tempCtx = tempCanvas.getContext("2d");
+    if (!tempCtx) return;
+
+    // Step 1: Draw the vision mask (darkvision circle + light circles)
+    tempCtx.fillStyle = "white";
+
+    // Darkvision circle
+    tempCtx.beginPath();
+    tempCtx.arc(origin.x, origin.y, visionRadiusPx, 0, Math.PI * 2);
+    tempCtx.fill();
+
+    // Add each visible light's area
+    for (const light of visibleLights) {
+      const lightRadiusPx = Math.max(light.bright, light.dim);
+      tempCtx.beginPath();
+      tempCtx.arc(
+        light.position.x,
+        light.position.y,
+        lightRadiusPx,
+        0,
+        Math.PI * 2
+      );
+      tempCtx.fill();
     }
+
+    // Step 2: Intersect with full LOS polygon
+    tempCtx.globalCompositeOperation = "destination-in";
+    tempCtx.beginPath();
+    tempCtx.moveTo(fullLOSPolygon[0].x, fullLOSPolygon[0].y);
+    for (let i = 1; i < fullLOSPolygon.length; i++) {
+      tempCtx.lineTo(fullLOSPolygon[i].x, fullLOSPolygon[i].y);
+    }
+    tempCtx.closePath();
+    tempCtx.fill();
+
+    // Step 3: Add the result to the explored mask (source-over accumulates)
+    maskCtx.drawImage(tempCanvas, 0, 0);
+  }
+
+  /**
+   * Collect all light sources: map-placed lights + unit-emitted lights.
+   * Map lights have bright/dim already in pixels.
+   * Unit lights from toLight() have bright/dim in grid cells — convert to pixels.
+   */
+  private collectAllLights(): Light[] {
+    const mapData = this.#vtt.mapData;
+    if (!mapData) return [];
+
+    const mapLights = mapData.lights ?? [];
+
+    const unitLights = this.#vtt.units
+      .filter((unit) => unit.gridPosition !== null)
+      .map((unit) => {
+        const light = unit.toLight();
+        light.bright = light.bright * this.#vtt.gridSize.width;
+        light.dim = light.dim * this.#vtt.gridSize.width;
+        return light;
+      });
+
+    return [...mapLights, ...unitLights];
+  }
+
+  /**
+   * Test if a point is inside a polygon using the ray-casting algorithm.
+   */
+  private isPointInPolygon(
+    point: Coordinates,
+    polygon: Coordinates[]
+  ): boolean {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].x;
+      const yi = polygon[i].y;
+      const xj = polygon[j].x;
+      const yj = polygon[j].y;
+
+      const intersect =
+        yi > point.y !== yj > point.y &&
+        point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+    return inside;
   }
   toString(): string {
     const createProps: Omit<CreateUnitProps, "vtt"> = {
