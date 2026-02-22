@@ -36,12 +36,24 @@ export const renderDoors = (vtt: VTT) => {
       y: (door.start.y + door.end.y) / 2,
     };
     const iconSize = vtt.gridSize.width / 8;
-    ctx.fillStyle = "black";
-    ctx.strokeStyle = "white";
+    if (door.isLocked) {
+      ctx.fillStyle = "#8B0000";
+      ctx.strokeStyle = "#FF4444";
+    } else if (door.isOpen) {
+      ctx.fillStyle = "transparent";
+      ctx.strokeStyle = "#44FF44";
+    } else {
+      ctx.fillStyle = "black";
+      ctx.strokeStyle = "white";
+    }
     ctx.beginPath();
     ctx.arc(doorCenter.x, doorCenter.y, iconSize, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    if (door.isOpen) {
+      ctx.stroke();
+    } else {
+      ctx.fill();
+      ctx.stroke();
+    }
   });
 
   ctx.restore();

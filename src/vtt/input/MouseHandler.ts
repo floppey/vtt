@@ -165,6 +165,22 @@ export class MouseHandler {
     }
     // if left mouse button is clicked
     if (event.button === 0) {
+      // Check for door click first
+      const canvasCoords = this.getCanvasCoordinates(this.#vtt.mousePosition);
+      const doors = this.#vtt.mapData?.doors ?? [];
+      const hitRadius = this.#vtt.gridSize.width / 4;
+      for (let i = 0; i < doors.length; i++) {
+        const door = doors[i];
+        const doorCenter = {
+          x: (door.start.x + door.end.x) / 2,
+          y: (door.start.y + door.end.y) / 2,
+        };
+        const dist = this.getDistanceBetweenCoordinates(canvasCoords, doorCenter);
+        if (dist <= hitRadius) {
+          this.#vtt.toggleDoor(i);
+          return;
+        }
+      }
       if (!this.#moveUnitStartCoordinates) {
         const cell = this.getCellAtMousePosition();
         if (cell) {

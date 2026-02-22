@@ -645,4 +645,14 @@ export class VTT extends BaseClass {
       });
     }
   }
+
+  toggleDoor(doorIndex: number): void {
+    if (!this.#mapData) return;
+    const door = this.#mapData.doors[doorIndex];
+    if (!door || door.isLocked) return;
+    door.isOpen = !door.isOpen;
+    this.#lightingDirty = true;
+    this.#units.forEach((unit) => unit.clearExploredMask());
+    this.renderAll();
+  }
 }
