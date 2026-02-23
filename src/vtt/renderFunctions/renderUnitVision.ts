@@ -105,6 +105,13 @@ export const renderUnitVision = (vtt: VTT) => {
   const mapHeight = vtt.canvas.background.height;
   if (mapWidth === 0 || mapHeight === 0) return;
 
+
+  // Global illumination: skip fog overlay entirely (map is fully visible)
+  if (vtt.mapData?.globalLight) return;
+
+
+  // GM with no selection: skip vision fog (GM sees everything)
+  if (vtt.isGM && vtt.selectedUnits.length === 0) return;
   const walls = collectVisionWalls(vtt);
   const units = vtt.selectedUnits.length > 0 ? vtt.selectedUnits : vtt.units;
   if (units.length === 0) return;
@@ -119,8 +126,9 @@ export const renderUnitVision = (vtt: VTT) => {
   const fogCtx = fogCanvas.getContext("2d");
   if (!fogCtx) return;
 
-  // Fill with dark fog
-  fogCtx.fillStyle = "rgba(0, 0, 0, 0.8)";
+  // Fill with dark fog — darkness controls opacity (0 = transparent, 1 = opaque)
+  const darkness = vtt.mapData?.darkness ?? 0.5;
+  fogCtx.fillStyle = `rgba(0, 0, 0, ${darkness})`;
   fogCtx.fillRect(0, 0, mapWidth, mapHeight);
 
   // Max LOS range: map diagonal so we never clip within the map bounds

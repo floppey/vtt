@@ -63,6 +63,8 @@ export class VTT extends BaseClass {
   #lightingCanvas: OffscreenCanvas | null;
 
   #lightingDirty: boolean;
+  #isGM: boolean;
+  #animating: boolean;
 
   userColor: string;
 
@@ -115,6 +117,8 @@ export class VTT extends BaseClass {
     this.userColor = "#00FF00";
     this.#lightingCanvas = null;
     this.#lightingDirty = true;
+    this.#isGM = true;
+    this.#animating = false;
 
     this.init();
 
@@ -240,6 +244,19 @@ export class VTT extends BaseClass {
 
   get webglCanvas() {
     return this.#webglCanvas;
+  }
+
+  get isGM() {
+    return this.#isGM;
+  }
+
+  set isGM(value: boolean) {
+    this.#isGM = value;
+    this.renderAll();
+  }
+
+  get animating() {
+    return this.#animating;
   }
 
   /**
@@ -433,7 +450,12 @@ export class VTT extends BaseClass {
         renderWalls(this);
         renderDoors(this);
         timeFunction("Render Lights", () => renderLightsWithWalls(this));
-        this.units.forEach((unit) => renderFogOfWar(unit));
+        // Selective fog of war: GM with no selection skips fog entirely
+        if (this.#selectedUnits.length > 0) {
+          renderFogOfWar(this, this.#selectedUnits);
+        } else if (!this.#isGM) {
+          renderFogOfWar(this, this.units);
+        }
         renderUnitVision(this);
       });
       // timeFunction("Render Background (webgl)", () => {
@@ -559,7 +581,7 @@ export class VTT extends BaseClass {
       this.deselectAllUnits();
     }
     this.#selectedUnits.push(unit);
-    this.render("foreground");
+    this.renderAll();
   }
 
   deselectUnit(unit: Unit) {
@@ -567,13 +589,13 @@ export class VTT extends BaseClass {
     if (this.#selectedUnits.length === 0) {
       this.#mouseHandler?.clearMoveUnitStartCoordinates();
     }
-    this.render("foreground");
+    this.renderAll();
   }
 
   deselectAllUnits() {
     if (this.#selectedUnits.length === 0) return;
     this.#selectedUnits = [];
-    this.render("foreground");
+    this.renderAll();
   }
 
   addUnit(unit: Unit, destination: GridPosition | null, broadcast = false) {
@@ -587,7 +609,13 @@ export class VTT extends BaseClass {
     unit.vtt = this;
     unit.gridPosition = destination;
     this.#units.push(unit);
-    this.render("foreground");
+    if (destination) {
+      this.#lightingDirty = true;
+      this.selectUnit(unit, false);
+      this.renderAll();
+    } else {
+      this.render("foreground");
+    }
 
     if (!destination && this.#mouseHandler) {
       this.#mouseHandler.placeNewUnit = unit;
@@ -646,6 +674,102 @@ export class VTT extends BaseClass {
     }
   }
 
+
+  /**
+   * Animate a unit moving in a straight line from its current position to the final cell.
+   * Uses requestAnimationFrame with pixel-level interpolation.
+   * Blocks mouse input during animation via the #animating flag.
+   */
+  animateMovement(unit: Unit, path: Cell[], broadcast = false): void {
+    if (path.length === 0) return;
+    if (path.length === 1) {
+      this.moveUnit(unit, path[0], broadcast);
+      return;
+    }
+    this.#animating = true;
+    unit.tempPosition = null;
+    const endCell = path[path.length - 1];
+    const segments: { from: { x: number; y: number }; to: { x: number; y: number }; length: number }[] = [];
+    let totalDistance = 0;
+    for (let i = 0; i < path.length - 1; i++) {
+      const from = {
+        x: path[i].col * this.gridSize.width,
+        y: path[i].row * this.gridSize.height,
+      };
+      const to = {
+        x: path[i + 1].col * this.gridSize.width,
+        y: path[i + 1].row * this.gridSize.height,
+      };
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const length = Math.sqrt(dx * dx + dy * dy);
+      segments.push({ from, to, length });
+      totalDistance += length;
+    }
+    // Duration proportional to total path distance, 67ms per grid cell
+    const durationMs = Math.max(100, (totalDistance / this.gridSize.width) * 67);
+    let startTime = 0;
+    let lastTrackedRow = path[0].row;
+    let lastTrackedCol = path[0].col;
+
+    const step = (timestamp: number) => {
+      if (startTime === 0) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const t = Math.min(elapsed / durationMs, 1);
+      // Find which segment we're on and interpolate within it
+      const traveled = t * totalDistance;
+      let accumulated = 0;
+      let currentX = segments[segments.length - 1].to.x;
+      let currentY = segments[segments.length - 1].to.y;
+      for (const seg of segments) {
+        if (accumulated + seg.length >= traveled) {
+          const segT = seg.length > 0 ? (traveled - accumulated) / seg.length : 1;
+          currentX = seg.from.x + (seg.to.x - seg.from.x) * segT;
+          currentY = seg.from.y + (seg.to.y - seg.from.y) * segT;
+          break;
+        }
+        accumulated += seg.length;
+      }
+
+      unit.animationPosition = { x: currentX, y: currentY };
+      // Silently track which cells the unit passes through (cheap, no mask rebuild)
+      const currentCol = Math.floor(currentX / this.gridSize.width);
+      const currentRow = Math.floor(currentY / this.gridSize.height);
+      if (currentRow !== lastTrackedRow || currentCol !== lastTrackedCol) {
+        unit.addExploredArea({ row: currentRow, col: currentCol });
+        lastTrackedRow = currentRow;
+        lastTrackedCol = currentCol;
+      }
+      // Only render foreground during animation (smooth, no expensive fog recalc)
+      this.render("foreground");
+      if (t >= 1) {
+        // Animation complete — snap to final cell, rebuild explored mask once
+        unit.animationPosition = null;
+        // Clear mask so renderFogOfWar triggers rebuildExploredMask()
+        // which covers all intermediate cells added via addExploredArea()
+        unit.clearExploredMask();
+        unit.cell = endCell;
+        this.#animating = false;
+        this.#lightingDirty = true;
+        this.renderAll();
+        if (broadcast && this.websocketChannel && this.websocketClientId) {
+          postMoveUnit({
+            unit: unit,
+            destination: {
+              row: endCell.row,
+              col: endCell.col,
+            },
+            channelId: this.websocketChannel,
+            author: this.websocketClientId,
+          });
+        }
+      } else {
+        requestAnimationFrame(step);
+      }
+    };
+
+    requestAnimationFrame(step);
+  }
   toggleDoor(doorIndex: number): void {
     if (!this.#mapData) return;
     const door = this.#mapData.doors[doorIndex];

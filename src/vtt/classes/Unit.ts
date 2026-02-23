@@ -5,6 +5,7 @@ import { Cell } from "@/vtt/classes/Cell";
 import { VTT } from "@/vtt/classes/VTT";
 import { Light, Wall } from "../types/mapData/MapData";
 import { computeVisibilityPolygon } from "@/vtt/util/computeVisibilityPolygon";
+import { segmentIntersectsWalls } from "@/vtt/util/segmentIntersectsWall";
 
 export interface InitUnitProps {
   vtt: VTT;
@@ -28,6 +29,7 @@ export default class Unit extends BaseClass {
   #tempPositions: Coordinates[] = [];
   #exploredAreas: GridPosition[] = [];
   #exploredMask: HTMLCanvasElement | null = null;
+  #animationPosition: Coordinates | null = null;
 
   constructor({
     vtt,
@@ -148,6 +150,19 @@ export default class Unit extends BaseClass {
     }
   }
 
+  /**
+   * Silently record a grid position as explored without rebuilding the mask.
+   * Used during animation to batch explored area updates cheaply.
+   */
+  addExploredArea(pos: GridPosition): void {
+    const isNew = !this.#exploredAreas.some(
+      (area) => area.row === pos.row && area.col === pos.col
+    );
+    if (isNew) {
+      this.#exploredAreas.push({ row: pos.row, col: pos.col });
+    }
+  }
+
   set currentHealth(currentHealth: number) {
     this.#currentHealth = currentHealth;
   }
@@ -183,6 +198,15 @@ export default class Unit extends BaseClass {
     return this.#tempPosition;
   }
 
+
+  set animationPosition(position: Coordinates | null) {
+    this.#animationPosition = position;
+  }
+
+  get animationPosition(): Coordinates | null {
+    return this.#animationPosition;
+  }
+
   private getTempPositions(): (Coordinates | null)[] {
     const positions: (Coordinates | null)[] = [
       ...this.#tempPositions,
@@ -199,6 +223,17 @@ export default class Unit extends BaseClass {
 
   addTempPosition(position: Coordinates) {
     this.#tempPositions.push(position);
+  }
+
+  /**
+   * Returns the intermediate waypoint grid positions (from ctrl+click).
+   * Does NOT include the unit's current position or the final drop position.
+   */
+  getTempWaypoints(): GridPosition[] {
+    return this.#tempPositions.map((pos) => ({
+      row: Math.round(pos.y / this.height),
+      col: Math.round(pos.x / this.width),
+    }));
   }
 
   /**
@@ -239,7 +274,7 @@ export default class Unit extends BaseClass {
     }
     const ctx = this.#vtt.ctx.foreground;
     const positions = this.getTempPositions();
-
+    const movementWalls = this.collectMovementWalls();
     let numberOfDiagonalMoves = 0;
     let totalDistance = 0;
     ctx.save();
@@ -247,12 +282,8 @@ export default class Unit extends BaseClass {
       if (!position) {
         return;
       }
-      ctx.beginPath();
-      ctx.strokeStyle = "rgba(255,255,255,0.75)";
-      ctx.fillStyle = "rgba(0,0,255,0.5)";
       ctx.lineWidth = Math.min(this.width, this.height) / 5;
       const oldPosition = positions[index - 1];
-
       const center = {
         x: position.x + this.width / 2,
         y: position.y + this.height / 2,
@@ -262,11 +293,28 @@ export default class Unit extends BaseClass {
           x: oldPosition.x + this.width / 2,
           y: oldPosition.y + this.height / 2,
         };
-        ctx.moveTo(oldCenter.x, oldCenter.y);
 
+        // Check if this segment crosses any movement-blocking walls
+        const intersections = segmentIntersectsWalls(
+          oldCenter,
+          center,
+          movementWalls
+        );
+        const crossesWall = intersections.length > 0;
+
+        // Draw the path segment
+        ctx.beginPath();
+        ctx.strokeStyle = crossesWall
+          ? "rgba(255,80,80,0.9)"
+          : "rgba(255,255,255,0.75)";
+        ctx.moveTo(oldCenter.x, oldCenter.y);
         ctx.lineTo(center.x, center.y);
         ctx.stroke();
+        // Draw circle at the start of the segment
         ctx.beginPath();
+        ctx.fillStyle = crossesWall
+          ? "rgba(255,0,0,0.5)"
+          : "rgba(0,0,255,0.5)";
         ctx.arc(
           oldCenter.x,
           oldCenter.y,
@@ -276,6 +324,24 @@ export default class Unit extends BaseClass {
         );
         ctx.fill();
 
+        // Draw X markers at each wall intersection point
+        if (crossesWall) {
+          const markerSize = Math.min(this.width, this.height) / 4;
+          ctx.save();
+          ctx.strokeStyle = "rgba(255,0,0,0.95)";
+          ctx.lineWidth = 3;
+          for (const hit of intersections) {
+            ctx.beginPath();
+            ctx.moveTo(hit.x - markerSize, hit.y - markerSize);
+            ctx.lineTo(hit.x + markerSize, hit.y + markerSize);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(hit.x + markerSize, hit.y - markerSize);
+            ctx.lineTo(hit.x - markerSize, hit.y + markerSize);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
         // Draw distance text at the center of the line
         const { numberOfFeet, diagonalMoves } = get5eDistance(
           oldCenter,
@@ -294,47 +360,25 @@ export default class Unit extends BaseClass {
           center.y - oldCenter.y,
           center.x - oldCenter.x
         );
-        // ctx.moveTo(
-        //   (center.x + oldCenter.x) / 2,
-        //   (center.y + oldCenter.y) / 2
-        // );
-        // ctx.save();
-        // ctx.rotate(angle);
-
-        // ctx.fillStyle = "black";
-        // ctx.font = "24px Arial";
-        // ctx.textAlign = "center";
-        // ctx.fillText(
-        //   `${distance} ft`,
-        //   (center.x + oldCenter.x) / 2,
-        //   (center.y + oldCenter.y) / 2
-        // );
-        // ctx.restore();
-
         // Save the current canvas state
         ctx.save();
-
         // Translate to midpoint and rotate
         ctx.translate(midX, midY);
         ctx.rotate(angle);
-
-        // Adjust rotation to keep text upright
         if (Math.abs(angle) > Math.PI / 2 || Math.abs(angle) < -Math.PI / 2) {
           ctx.rotate(Math.PI);
         }
-
         // Draw distance text
         ctx.fillStyle = "black";
         ctx.font = "24px Arial";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(`${numberOfFeet} ft`, 0, 0);
-
-        // Restore canvas state
         ctx.restore();
       }
       if (positions.length > 1) {
         ctx.beginPath();
+        ctx.fillStyle = "rgba(0,0,255,0.5)";
         ctx.arc(
           center.x,
           center.y,
@@ -344,7 +388,6 @@ export default class Unit extends BaseClass {
         );
         ctx.fill();
       }
-
       // Draw the total distance at the end of the path
       if (index === positions.length - 1 && totalDistance > 0) {
         ctx.fillStyle = "black";
@@ -380,7 +423,9 @@ export default class Unit extends BaseClass {
     const width = gridSize.width;
     const height = gridSize.height;
 
-    if (!position && this.cell) {
+    if (!position && this.#animationPosition) {
+      position = this.#animationPosition;
+    } else if (!position && this.cell) {
       position = {
         x: this.cell.col * width,
         y: this.cell.row * height,
@@ -454,6 +499,26 @@ export default class Unit extends BaseClass {
     ];
   }
 
+
+  /**
+   * Collect all movement-blocking wall segments from the current map data.
+   * Includes walls with blocksMovement and closed doors.
+   */
+  private collectMovementWalls(): Wall[] {
+    const mapData = this.#vtt.mapData;
+    if (!mapData) return [];
+    return [
+      ...mapData.walls.filter((w) => w.blocksMovement),
+      ...mapData.doors
+        .filter((door) => !door.isOpen)
+        .map((door) => ({
+          start: door.start,
+          end: door.end,
+          blocksMovement: true,
+          blocksVision: door.blocksVision,
+        })),
+    ];
+  }
   /**
    * Update the explored mask by adding the light-aware visible area from the current position.
    * Called when the unit moves to a new cell.

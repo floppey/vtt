@@ -90,7 +90,7 @@ export const convertOpenVttToMapData = (openVtt: OpenVtt): MapData => {
     gridColor: "#000000",
     gridAlpha: 1,
     globalLight: !openVtt.environment.baked_lighting,
-    darkness: 0,
+    darkness: 0.5,
     lights,
     backgroundImage: openVtt.image,
     backgroundImageType: "jpg",

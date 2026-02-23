@@ -1,7 +1,8 @@
 import { MouseEvent } from "react";
 import { VTT } from "@/vtt/classes/VTT";
-import { Coordinates } from "@/vtt/types/types";
+import { Coordinates, GridPosition } from "@/vtt/types/types";
 import Unit from "../classes/Unit";
+import { resolveMultiSegmentPath } from "@/vtt/util/resolvePath";
 
 type MouseEventListener = (e: MouseEvent) => void;
 type ScrollEventListener = (e: WheelEvent) => void;
@@ -92,6 +93,7 @@ export class MouseHandler {
   }
 
   private mouseMove(event: MouseEvent) {
+    if (this.#vtt.animating) return;
     this.#vtt.mousePosition = { x: event.clientX, y: event.clientY };
     if (this.#panMovementStartCoordinates) {
       const mouseDragX =
@@ -156,6 +158,7 @@ export class MouseHandler {
   }
 
   private mouseDown(event: MouseEvent) {
+    if (this.#vtt.animating) return;
     if (this.ignoreInput(event)) {
       return;
     }
@@ -202,6 +205,7 @@ export class MouseHandler {
   }
 
   private mouseUp() {
+    if (this.#vtt.animating) return;
     this.#panMovementStartCoordinates = null;
     if (this.#vtt.tempPosition) {
       this.#vtt.position = { ...this.#vtt.tempPosition };
@@ -234,7 +238,25 @@ export class MouseHandler {
         unit.tempPosition = null;
         this.#vtt.render("foreground");
       } else {
-        this.#vtt.moveUnit(unit, toCell, true);
+        // Build waypoints: start → intermediate ctrl+click points → end
+        const startPos = unit.gridPosition;
+        const endPos: GridPosition = { row: toCell.row, col: toCell.col };
+        const intermediateWaypoints = unit.getTempWaypoints();
+        const waypoints: GridPosition[] = startPos
+          ? [startPos, ...intermediateWaypoints, endPos]
+          : [...intermediateWaypoints, endPos];
+
+        // Resolve cell-by-cell path through all waypoints
+        const resolvedPath = resolveMultiSegmentPath(waypoints);
+
+        // Convert GridPositions to Cells, filtering out any invalid positions
+        const cells = resolvedPath
+          .filter((gp) => this.#vtt.grid.cells[gp.row]?.[gp.col])
+          .map((gp) => this.#vtt.grid.cells[gp.row][gp.col]);
+
+        if (cells.length > 0) {
+          this.#vtt.animateMovement(unit, cells, true);
+        }
       }
       this.placeNewUnit = null;
       this.#moveUnitStartCoordinates = null;

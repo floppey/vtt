@@ -10,8 +10,8 @@
   "padding": 0.0,
   "gridColor": "#000000",
   "gridAlpha": 0.2,
-  "globalLight": true,
-  "darkness": 0.0,
+  "globalLight": false,
+  "darkness": 0.5,
   "lights": [
     {
       "x": 627,
